@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <title>403 — Akses Ditolak | AKHLAK 360°</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@700;800&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    .error-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--color-bg);
+    }
+    .error-box {
+      text-align: center;
+      padding: 48px;
+      max-width: 480px;
+    }
+    .error-code {
+      font-size: 96px;
+      font-weight: 800;
+      color: var(--color-primary);
+      line-height: 1;
+      margin-bottom: 16px;
+    }
+  </style>
+</head>
+<body>
+  <div class="error-page">
+    <div class="error-box">
+      <div class="error-code">403</div>
+      <h2 style="margin-bottom:12px;">Akses Ditolak</h2>
+      <p style="color:var(--color-text-muted); margin-bottom:28px;">
+        Anda tidak memiliki izin untuk mengakses halaman ini.
+        Silakan login dengan akun yang sesuai atau hubungi HR Admin.
+      </p>
+      <a href="{{ url_for('auth.login') }}" class="btn btn-primary">
+        🔑 Kembali ke Login
+      </a>
+    </div>
+  </div>
+</body>
+</html>

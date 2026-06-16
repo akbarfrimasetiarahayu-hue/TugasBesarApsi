@@ -1,0 +1,88 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Evaluator{% endblock %}
+{% block page_title %}Tugas Evaluasi{% endblock %}
+
+{% block content %}
+
+{% if has_pending %}
+<div class="notification-banner mb-6">
+  <span style="font-size:20px;">🔔</span>
+  <div>
+    <strong>Anda memiliki tugas evaluasi yang belum selesai.</strong>
+    Harap segera lengkapi form penilaian untuk karyawan di bawah ini sebelum periode berakhir.
+  </div>
+</div>
+{% endif %}
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">📋 Daftar Karyawan untuk Dinilai</h3>
+    <span class="badge badge-submitted">{{ tugas_list|length }} tugas</span>
+  </div>
+  <div class="table-wrapper">
+    {% if tugas_list %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nama Karyawan</th>
+          <th>Jabatan & Divisi</th>
+          <th>Sebagai</th>
+          <th>Status</th>
+          <th>Terkirim</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for t in tugas_list %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--color-primary-light);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
+                {{ t.nama_karyawan[0]|upper }}
+              </div>
+              <strong>{{ t.nama_karyawan }}</strong>
+            </div>
+          </td>
+          <td>
+            <div style="font-size:13px;">{{ t.position }}</div>
+            <div style="font-size:11px;color:var(--color-text-muted);">{{ t.division }}</div>
+          </td>
+          <td>
+            <span class="badge
+              {% if t.jenis_penilaian == 'atasan' %}badge-kompeten
+              {% elif t.jenis_penilaian == 'bawahan' %}badge-harmonis
+              {% elif t.jenis_penilaian == 'rekan' %}badge-amanah
+              {% else %}badge-adaptif{% endif %}">
+              {{ t.jenis_penilaian|title }}
+            </span>
+          </td>
+          <td>
+            <span class="badge badge-{{ t.status }}">{{ t.status|title }}</span>
+          </td>
+          <td style="font-size:12px;color:var(--color-text-muted);">
+            {{ t.submitted_at[:16].replace('T', ' ') if t.submitted_at else '—' }}
+          </td>
+          <td>
+            {% if t.status == 'pending' %}
+            <a href="{{ url_for('evaluator.assess', id_penilaian=t.id_penilaian) }}" class="btn btn-primary btn-sm">
+              ✍️ Nilai
+            </a>
+            {% else %}
+            <button class="btn btn-ghost btn-sm" disabled>✅ Selesai</button>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <h3>Tidak Ada Tugas Evaluasi</h3>
+      <p>Anda tidak memiliki tugas untuk menilai karyawan lain pada periode ini.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

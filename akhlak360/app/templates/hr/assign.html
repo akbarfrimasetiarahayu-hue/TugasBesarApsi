@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% block title %}Assign Evaluator{% endblock %}
+{% block page_title %}Assign Evaluator{% endblock %}
+
+{% block content %}
+<div class="section-header mb-6">
+  <div>
+    <h2 class="section-title">🔗 Auto-Assign Evaluator</h2>
+    <p style="color:var(--color-text-muted);font-size:13px;">Sistem akan otomatis menentukan evaluator berdasarkan struktur organisasi</p>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:360px 1fr;gap:24px;">
+
+  <!-- Panel Kiri: Form Assign -->
+  <div>
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">⚙️ Pengaturan Assign</h3></div>
+      <div class="card-body">
+        <form method="POST" action="{{ url_for('hr.assign') }}" id="assignForm">
+          <div class="form-group">
+            <label class="form-label">Pilih Periode Aktif *</label>
+            <select class="form-control" name="id_period" required>
+              <option value="">— Pilih periode —</option>
+              {% for p in periods_list %}
+              <option value="{{ p.id_period }}" {{ 'selected' if selected_period and selected_period|int == p.id_period }}>
+                {{ p.period_name }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="card" style="background:var(--color-primary-light);border:none;padding:14px 16px;margin-bottom:16px;">
+            <p style="font-size:12px;color:var(--color-primary);font-weight:600;margin-bottom:8px;">📌 Logika Auto-Assign:</p>
+            <ul style="font-size:12px;color:var(--color-text-muted);padding-left:16px;margin:0;">
+              <li><strong>Atasan</strong> = Supervisor dari karyawan</li>
+              <li><strong>Bawahan</strong> = Karyawan yang menggunakan dia sebagai supervisor</li>
+              <li><strong>Rekan</strong> = Karyawan divisi sama (bukan atasan/bawahan)</li>
+              <li><strong>Self</strong> = Karyawan itu sendiri</li>
+            </ul>
+          </div>
+
+          <button type="submit" class="btn btn-primary w-100">
+            🚀 Jalankan Auto-Assign
+          </button>
+        </form>
+
+        {% if periods_list %}
+        <div style="margin-top:12px;">
+          <form method="GET" action="{{ url_for('hr.assign') }}">
+            <div class="form-group">
+              <label class="form-label">Preview Assignment:</label>
+              <select class="form-control" name="id_period">
+                <option value="">— Pilih periode untuk preview —</option>
+                {% for p in periods_list %}
+                <option value="{{ p.id_period }}" {{ 'selected' if selected_period and selected_period|int == p.id_period }}>
+                  {{ p.period_name }}
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <button type="submit" class="btn btn-outline w-100">👀 Lihat Preview</button>
+          </form>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <!-- Panel Kanan: Preview -->
+  <div>
+    <div class="card">
+      <div class="card-header">
+        <h3 class="card-title">📋 Preview Assignment</h3>
+        {% if preview %}
+        <span class="badge badge-submitted">{{ preview|length }} tugas</span>
+        {% endif %}
+      </div>
+      <div class="table-wrapper">
+        {% if preview %}
+        <table>
+          <thead>
+            <tr>
+              <th>Evaluator</th>
+              <th>Divisi Evaluator</th>
+              <th>Jenis Penilaian</th>
+              <th>Yang Dinilai</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for p in preview %}
+            <tr>
+              <td><strong>{{ p.nama_evaluator }}</strong></td>
+              <td>{{ p.div_evaluator }}</td>
+              <td>
+                <span class="badge
+                  {% if p.jenis_penilaian == 'atasan' %}badge-kompeten
+                  {% elif p.jenis_penilaian == 'bawahan' %}badge-harmonis
+                  {% elif p.jenis_penilaian == 'rekan' %}badge-amanah
+                  {% else %}badge-adaptif{% endif %}">
+                  {{ p.jenis_penilaian|title }}
+                </span>
+              </td>
+              <td>{{ p.nama_karyawan }}</td>
+              <td><span class="badge badge-{{ p.status }}">{{ p.status|title }}</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-state">
+          <div class="empty-state-icon">🔗</div>
+          <h3>Belum Ada Assignment</h3>
+          <p>Pilih periode dan jalankan auto-assign, atau pilih periode untuk melihat preview.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

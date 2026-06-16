@@ -1,0 +1,188 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Management{% endblock %}
+{% block page_title %}Dashboard Management{% endblock %}
+
+{% block content %}
+
+<!-- Header Periode -->
+<div class="card mb-6" style="background:var(--color-primary-dark);color:white;border:none;">
+  <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <h2 style="color:white;margin-bottom:6px;">Overview Kinerja Perusahaan</h2>
+      <p style="color:rgba(255,255,255,0.8);margin:0;">
+        {% if periode_aktif %}
+        Data periode berjalan: <strong>{{ periode_aktif.period_name }}</strong>
+        {% else %}
+        Tidak ada periode aktif saat ini.
+        {% endif %}
+      </p>
+    </div>
+    <div style="text-align:right;">
+      <p style="color:rgba(255,255,255,0.6);font-size:12px;margin-bottom:4px;text-transform:uppercase;">Total Karyawan</p>
+      <div style="font-size:36px;font-weight:800;color:var(--color-accent);line-height:1;">{{ total_karyawan }}</div>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 2fr;gap:24px;margin-bottom:28px;">
+
+  <!-- Pie Chart Distribusi Kategori -->
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">📊 Distribusi Kinerja</h3></div>
+    <div class="card-body">
+      {% if distribusi_kategori %}
+      <div class="chart-container">
+        <canvas id="categoryChart"></canvas>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">🥧</div>
+        <p>Belum ada data untuk periode ini.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Bar Chart Divisi -->
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">🏢 Rata-rata Skor per Divisi</h3></div>
+    <div class="card-body">
+      {% if division_stats %}
+      <div class="chart-container">
+        <canvas id="divisionChart"></canvas>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <p>Belum ada data skor divisi.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+  <!-- Top Performers -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">🌟 Top 5 Performers</h3>
+    </div>
+    <div class="table-wrapper" style="border:none;">
+      {% if top_performers %}
+      <table>
+        <tbody>
+          {% for p in top_performers %}
+          <tr>
+            <td>
+              <div style="font-size:13.5px;font-weight:600;">{{ p.nama }}</div>
+              <div style="font-size:11px;color:var(--color-text-muted);">{{ p.division }}</div>
+            </td>
+            <td style="text-align:right;">
+              <div style="font-size:16px;font-weight:700;color:var(--color-primary);">{{ p.total_score }}</div>
+              <span class="badge badge-{{ p.category|lower|replace(' ', '-') }}">{{ p.category }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state"><p>Data belum tersedia.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Bottom Performers -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">⚠️ Area of Improvement (Bottom 5)</h3>
+    </div>
+    <div class="table-wrapper" style="border:none;">
+      {% if bottom_performers %}
+      <table>
+        <tbody>
+          {% for p in bottom_performers %}
+          <tr>
+            <td>
+              <div style="font-size:13.5px;font-weight:600;">{{ p.nama }}</div>
+              <div style="font-size:11px;color:var(--color-text-muted);">{{ p.division }}</div>
+            </td>
+            <td style="text-align:right;">
+              <div style="font-size:16px;font-weight:700;color:var(--color-danger);">{{ p.total_score }}</div>
+              <span class="badge badge-{{ p.category|lower|replace(' ', '-') }}">{{ p.category }}</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state"><p>Data belum tersedia.</p></div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+{% if distribusi_kategori %}
+const pieCtx = document.getElementById('categoryChart').getContext('2d');
+const catLabels = {{ distribusi_kategori | map(attribute='category') | list | tojson }};
+const catData = {{ distribusi_kategori | map(attribute='jumlah') | list | tojson }};
+const catColors = catLabels.map(c => {
+  if(c==='Sangat Baik') return '#006B3C';
+  if(c==='Baik') return '#00A86B';
+  if(c==='Cukup') return '#F5A623';
+  return '#E63946';
+});
+
+new Chart(pieCtx, {
+  type: 'doughnut',
+  data: {
+    labels: catLabels,
+    datasets: [{
+      data: catData,
+      backgroundColor: catColors,
+      borderWidth: 2,
+      hoverOffset: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    cutout: '65%',
+    plugins: {
+      legend: { position: 'bottom' }
+    }
+  }
+});
+{% endif %}
+
+{% if division_stats %}
+const barCtx = document.getElementById('divisionChart').getContext('2d');
+new Chart(barCtx, {
+  type: 'bar',
+  data: {
+    labels: {{ division_stats | map(attribute='division') | list | tojson }},
+    datasets: [{
+      label: 'Rata-rata Skor',
+      data: {{ division_stats | map(attribute='avg_score') | list | tojson }},
+      backgroundColor: 'rgba(0, 107, 60, 0.8)',
+      borderRadius: 4
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      y: { min: 0, max: 5 }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

@@ -1,0 +1,385 @@
+# AKHLAK_360_FOUNDATION.fnd
+# Foundation & Technical Context — Sistem Penilaian 360° AKHLAK
+# Gunakan file ini sebagai referensi teknis saat membangun sistem
+
+---
+
+## SKEMA DATABASE (Class Diagram → SQL)
+
+```sql
+-- ============================================================
+-- TABLE: roles
+-- ============================================================
+CREATE TABLE roles (
+    id_role       INT PRIMARY KEY AUTO_INCREMENT,
+    role_name     VARCHAR(50) NOT NULL,  -- 'hr', 'karyawan', 'evaluator', 'management'
+    description   VARCHAR(255)
+);
+
+-- ============================================================
+-- TABLE: employees
+-- ============================================================
+CREATE TABLE employees (
+    user_id       INT PRIMARY KEY AUTO_INCREMENT,
+    id_supervisor INT NULL,              -- FK ke employees.user_id (atasan langsung)
+    nama          VARCHAR(100) NOT NULL,
+    email         VARCHAR(100) UNIQUE NOT NULL,
+    nip           VARCHAR(20) UNIQUE NOT NULL,
+    position      VARCHAR(100),
+    division      VARCHAR(100),
+    FOREIGN KEY (id_supervisor) REFERENCES employees(user_id)
+);
+
+-- ============================================================
+-- TABLE: user_accounts
+-- ============================================================
+CREATE TABLE user_accounts (
+    id_account    INT PRIMARY KEY AUTO_INCREMENT,
+    id_employee   INT NOT NULL,
+    id_role       INT NOT NULL,
+    username      VARCHAR(50) UNIQUE NOT NULL,
+    password      VARCHAR(255) NOT NULL,  -- bcrypt hash
+    status        VARCHAR(20) DEFAULT 'active',  -- 'active', 'inactive'
+    FOREIGN KEY (id_employee) REFERENCES employees(user_id),
+    FOREIGN KEY (id_role) REFERENCES roles(id_role)
+);
+
+-- ============================================================
+-- TABLE: assessment_periods
+-- ============================================================
+CREATE TABLE assessment_periods (
+    id_period     INT PRIMARY KEY AUTO_INCREMENT,
+    period_name   VARCHAR(100) NOT NULL,  -- e.g. "Semester 1 2026"
+    start_date    DATE NOT NULL,
+    end_date      DATE NOT NULL,
+    status        VARCHAR(20) DEFAULT 'draft'  -- 'draft', 'active', 'closed'
+);
+
+-- ============================================================
+-- TABLE: indikators
+-- ============================================================
+CREATE TABLE indikators (
+    id_indikator  INT PRIMARY KEY AUTO_INCREMENT,
+    core_value    INT NOT NULL,           -- 1=Amanah, 2=Kompeten, 3=Harmonis,
+                                          -- 4=Loyal, 5=Adaptif, 6=Kolaboratif
+    indikator_name VARCHAR(255) NOT NULL,
+    nilai_min     INT DEFAULT 1,
+    nilai_max     INT DEFAULT 5
+);
+
+-- ============================================================
+-- TABLE: penilaians (header penilaian per evaluator per periode)
+-- ============================================================
+CREATE TABLE penilaians (
+    id_penilaian  INT PRIMARY KEY AUTO_INCREMENT,
+    id_period     INT NOT NULL,
+    id_evaluator  INT NOT NULL,           -- FK employees.user_id (yang menilai)
+    id_karyawan   INT NOT NULL,           -- FK employees.user_id (yang dinilai)
+    jenis_penilaian VARCHAR(20) NOT NULL, -- 'atasan', 'rekan', 'bawahan', 'self'
+    status        VARCHAR(20) DEFAULT 'pending', -- 'pending', 'submitted'
+    submitted_at  DATETIME NULL,
+    FOREIGN KEY (id_period) REFERENCES assessment_periods(id_period),
+    FOREIGN KEY (id_evaluator) REFERENCES employees(user_id),
+    FOREIGN KEY (id_karyawan) REFERENCES employees(user_id)
+);
+
+-- ============================================================
+-- TABLE: detail_penilaians (skor per indikator)
+-- ============================================================
+CREATE TABLE detail_penilaians (
+    id_detail     INT PRIMARY KEY AUTO_INCREMENT,
+    penilaian_id  INT NOT NULL,
+    id_indikator  INT NOT NULL,
+    score         INT NOT NULL,           -- nilai antara nilai_min dan nilai_max
+    feedback      TEXT NULL,
+    FOREIGN KEY (penilaian_id) REFERENCES penilaians(id_penilaian),
+    FOREIGN KEY (id_indikator) REFERENCES indikators(id_indikator)
+);
+
+-- ============================================================
+-- TABLE: hasil_akhirs (hasil final setelah dihitung sistem)
+-- ============================================================
+CREATE TABLE hasil_akhirs (
+    id_result     INT PRIMARY KEY AUTO_INCREMENT,
+    id_employee   INT NOT NULL,
+    id_period     INT NOT NULL,
+    score_atasan  DECIMAL(5,2) NULL,
+    score_bawahan DECIMAL(5,2) NULL,
+    score_rekan   DECIMAL(5,2) NULL,
+    score_self    DECIMAL(5,2) NULL,
+    total_score   DECIMAL(5,2) NULL,      -- weighted final score
+    category      VARCHAR(50) NULL,       -- 'Sangat Baik', 'Baik', 'Cukup', 'Kurang'
+    calculated_at DATETIME NULL,
+    FOREIGN KEY (id_employee) REFERENCES employees(user_id),
+    FOREIGN KEY (id_period) REFERENCES assessment_periods(id_period)
+);
+
+-- ============================================================
+-- TABLE: hasil_reports
+-- ============================================================
+CREATE TABLE hasil_reports (
+    id_report     INT PRIMARY KEY AUTO_INCREMENT,
+    id_result     INT NOT NULL,
+    report_type   VARCHAR(50),            -- 'pdf', 'excel'
+    generate_date DATE,
+    generated_by  INT,                    -- FK employees.user_id
+    FOREIGN KEY (id_result) REFERENCES hasil_akhirs(id_result)
+);
+```
+
+---
+
+## SEED DATA — Core Values AKHLAK
+
+```sql
+-- Roles
+INSERT INTO roles (role_name, description) VALUES
+('hr', 'Human Resource Administrator'),
+('karyawan', 'Karyawan biasa'),
+('evaluator', 'Penilai (atasan/rekan/bawahan)'),
+('management', 'Manajemen/Top Management');
+
+-- Indikator AKHLAK (contoh, bisa dikembangkan)
+INSERT INTO indikators (core_value, indikator_name, nilai_min, nilai_max) VALUES
+-- Amanah (1)
+(1, 'Menyelesaikan tugas sesuai komitmen dan tepat waktu', 1, 5),
+(1, 'Bertanggung jawab atas hasil kerja', 1, 5),
+(1, 'Jujur dalam melaporkan pekerjaan', 1, 5),
+-- Kompeten (2)
+(2, 'Memiliki pengetahuan dan keterampilan yang dibutuhkan', 1, 5),
+(2, 'Terus belajar dan meningkatkan kompetensi', 1, 5),
+(2, 'Menghasilkan pekerjaan berkualitas tinggi', 1, 5),
+-- Harmonis (3)
+(3, 'Menghargai perbedaan dan keberagaman', 1, 5),
+(3, 'Menciptakan suasana kerja yang kondusif', 1, 5),
+(3, 'Membantu rekan kerja yang membutuhkan', 1, 5),
+-- Loyal (4)
+(4, 'Mendahulukan kepentingan bangsa dan negara', 1, 5),
+(4, 'Menjaga nama baik perusahaan', 1, 5),
+(4, 'Patuh pada kebijakan dan regulasi perusahaan', 1, 5),
+-- Adaptif (5)
+(5, 'Cepat menyesuaikan diri dengan perubahan', 1, 5),
+(5, 'Berinovasi dalam pekerjaan', 1, 5),
+(5, 'Proaktif menghadapi tantangan baru', 1, 5),
+-- Kolaboratif (6)
+(6, 'Bekerja sama lintas divisi/tim secara efektif', 1, 5),
+(6, 'Aktif berkontribusi dalam kerja tim', 1, 5),
+(6, 'Terbuka menerima masukan dari rekan kerja', 1, 5);
+```
+
+---
+
+## LOGIKA PERHITUNGAN NILAI AKHIR
+
+```
+Bobot Penilaian:
+  - Atasan    : 40%  (0.40)
+  - Bawahan   : 30%  (0.30)
+  - Rekan     : 20%  (0.20)
+  - Diri Send.: 10%  (0.10)
+
+Formula:
+  skor_per_jenis = rata-rata semua detail_penilaian.score untuk jenis tersebut
+
+  total_score = (score_atasan × 0.40)
+              + (score_bawahan × 0.30)
+              + (score_rekan × 0.20)
+              + (score_self × 0.10)
+
+Kategori:
+  4.50 - 5.00 → "Sangat Baik"
+  3.50 - 4.49 → "Baik"
+  2.50 - 3.49 → "Cukup"
+  < 2.50      → "Kurang"
+```
+
+Pseudocode (Python-style):
+```python
+def hitung_nilai_akhir(id_karyawan, id_period):
+    bobot = {'atasan': 0.40, 'bawahan': 0.30, 'rekan': 0.20, 'self': 0.10}
+    scores = {}
+
+    for jenis in ['atasan', 'bawahan', 'rekan', 'self']:
+        penilaian_list = get_submitted_penilaian(id_karyawan, id_period, jenis)
+        if penilaian_list:
+            semua_skor = [d.score for p in penilaian_list for d in p.details]
+            scores[jenis] = sum(semua_skor) / len(semua_skor)
+        else:
+            scores[jenis] = None
+
+    total = sum(scores[j] * bobot[j] for j in bobot if scores[j] is not None)
+    return total, get_kategori(total)
+```
+
+---
+
+## STRUKTUR FOLDER PROYEK (Antigravity)
+
+```
+akhlak360/
+├── app/
+│   ├── __init__.py
+│   ├── models/
+│   │   ├── employee.py
+│   │   ├── assessment.py
+│   │   ├── result.py
+│   │   └── user.py
+│   ├── routes/
+│   │   ├── auth.py          # login, logout
+│   │   ├── hr.py            # semua route HR
+│   │   ├── employee.py      # route karyawan
+│   │   ├── evaluator.py     # route evaluator
+│   │   └── management.py    # route management
+│   ├── services/
+│   │   ├── calculator.py    # logika hitung nilai akhir
+│   │   ├── notifier.py      # kirim reminder/notifikasi
+│   │   └── report_gen.py    # generate PDF/Excel
+│   └── templates/
+│       ├── base.html
+│       ├── login.html
+│       ├── hr/
+│       │   ├── dashboard.html
+│       │   ├── employees.html
+│       │   ├── periods.html
+│       │   ├── assign.html
+│       │   ├── results.html
+│       │   └── reports.html
+│       ├── employee/
+│       │   ├── dashboard.html
+│       │   ├── self_assessment.html
+│       │   └── my_results.html
+│       ├── evaluator/
+│       │   ├── dashboard.html
+│       │   └── assess.html
+│       └── management/
+│           ├── dashboard.html
+│           ├── performance.html
+│           └── reports.html
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   ├── charts.js        # Chart.js visualisasi
+│   │   └── main.js
+│   └── img/
+├── migrations/
+│   └── 001_create_tables.sql
+├── config.py
+├── requirements.txt
+└── run.py
+```
+
+---
+
+## UI / DESIGN TOKENS
+
+```css
+/* Palet warna — terinspirasi identitas BUMN energi Indonesia */
+--color-primary:    #006B3C;   /* Hijau tua — kepercayaan, stabilitas */
+--color-secondary:  #00A86B;   /* Hijau muda — pertumbuhan */
+--color-accent:     #F5A623;   /* Kuning emas — energi, nilai */
+--color-danger:     #E63946;   /* Merah — gap/risiko */
+--color-bg:         #F7F9FC;   /* Abu sangat terang */
+--color-surface:    #FFFFFF;
+--color-text:       #1A2332;
+--color-muted:      #6B7280;
+
+/* Typography */
+--font-display: 'Plus Jakarta Sans', sans-serif;  /* heading */
+--font-body:    'Inter', sans-serif;              /* body */
+
+/* Skala AKHLAK (untuk badge/chip warna per nilai) */
+--akhlak-amanah:      #4A90D9;
+--akhlak-kompeten:    #7B68EE;
+--akhlak-harmonis:    #50C878;
+--akhlak-loyal:       #FF7F50;
+--akhlak-adaptif:     #FFD700;
+--akhlak-kolaboratif: #20B2AA;
+```
+
+---
+
+## KOMPONEN UI KUNCI
+
+### 1. Radar Chart — Gap Analysis
+Gunakan **Chart.js** dengan `type: 'radar'` untuk menampilkan perbandingan skor per nilai AKHLAK dari berbagai penilai (atasan vs rekan vs bawahan vs self).
+
+### 2. Progress Bar — Completion Rate
+Tampilkan berapa % evaluator sudah mengisi penilaian untuk setiap karyawan.
+
+### 3. Score Badge
+```html
+<!-- Contoh badge kategori -->
+<span class="badge badge-sangat-baik">Sangat Baik</span>
+<span class="badge badge-baik">Baik</span>
+<span class="badge badge-cukup">Cukup</span>
+<span class="badge badge-kurang">Kurang</span>
+```
+
+### 4. Form Penilaian
+Rating scale 1–5 per indikator, dikelompokkan per core value AKHLAK. Tampilkan label deskriptif:
+- 1 = Belum Menunjukkan
+- 2 = Perlu Perbaikan
+- 3 = Cukup Baik
+- 4 = Baik
+- 5 = Sangat Baik
+
+---
+
+## SEQUENCE ALUR UTAMA
+
+```
+[HR] Buat Periode → Assign Evaluator (otomatis dari struktur org)
+  ↓
+[Sistem] Kirim notifikasi ke semua evaluator + karyawan (self-assessment)
+  ↓
+[Karyawan] Isi Self-Assessment → Submit
+[Evaluator] Isi Form Penilaian → Submit
+  ↓
+[Sistem] Cek kelengkapan → Kirim reminder jika belum selesai
+  ↓
+[Sistem] Hitung nilai akhir otomatis (bobot 40/30/20/10)
+  ↓
+[HR] Validasi hasil → Publish
+  ↓
+[Karyawan] Lihat hasil + gap analysis + rekomendasi IDP
+[HR/Management] Generate laporan PDF/Excel
+```
+
+---
+
+## TEST CASES (Black Box — Referensi Section 6)
+
+| ID | Fitur | Input | Expected Output | Status |
+|---|---|---|---|---|
+| TC-01 | Login valid | email+password benar | Redirect ke dashboard sesuai role | - |
+| TC-02 | Login invalid | password salah | Pesan error "Email/password salah" | - |
+| TC-03 | Tambah karyawan | Data lengkap | Karyawan tersimpan, muncul di daftar | - |
+| TC-04 | Tambah karyawan | NIP duplikat | Error "NIP sudah terdaftar" | - |
+| TC-05 | Submit penilaian | Semua indikator diisi | Status berubah "submitted", data tersimpan | - |
+| TC-06 | Submit penilaian | Ada indikator kosong | Validasi error, form tidak tersubmit | - |
+| TC-07 | Hitung nilai akhir | Semua evaluator submit | Total score terhitung dengan bobot benar | - |
+| TC-08 | Gap analysis | Ada perbedaan skor | Chart radar menampilkan gap per nilai AKHLAK | - |
+| TC-09 | Generate laporan | Pilih periode | File PDF/Excel ter-download | - |
+| TC-10 | Akses lintas role | Karyawan akses URL HR | Redirect ke halaman tidak diizinkan / 403 | - |
+
+---
+
+## CATATAN IMPLEMENTASI
+
+1. **Password:** Selalu hash dengan bcrypt sebelum disimpan
+2. **Session/Auth:** Gunakan session berbasis role; cek role di setiap route
+3. **Auto-Assign Evaluator:** Query `SELECT * FROM employees WHERE id_supervisor = :user_id` untuk bawahan; atasan dari field `id_supervisor` karyawan itu sendiri
+4. **Reminder:** Bisa implementasi sederhana dengan cron job atau scheduled check saat halaman HR dibuka
+5. **Export PDF:** Gunakan library seperti `WeasyPrint` (Python) atau `jsPDF` (JS)
+6. **Export Excel:** Gunakan `openpyxl` (Python) atau `SheetJS` (JS)
+7. **Validasi Input:** Pastikan score dalam range nilai_min–nilai_max, semua indikator terisi sebelum submit
+
+---
+
+## REFERENSI YANG BISA DIGUNAKAN
+
+- Kementerian BUMN, "Panduan Implementasi Core Values AKHLAK", 2021
+- Sistem Penilaian 360 Derajat dalam manajemen SDM BUMN Indonesia
+- Antigravity Framework Documentation (sesuaikan dengan versi yang digunakan)
+- Chart.js Documentation: https://www.chartjs.org/docs/

@@ -1,0 +1,213 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard HR{% endblock %}
+{% block page_title %}Dashboard HR Admin{% endblock %}
+
+{% block content %}
+
+<!-- Notification banner: pending penilaian -->
+{% if total_pending > 0 and periode_aktif %}
+<div class="notification-banner mb-6">
+  <span style="font-size:20px;">🔔</span>
+  <div>
+    <strong>{{ total_pending }} penilaian</strong> masih menunggu untuk diselesaikan di periode
+    <strong>{{ periode_aktif.period_name }}</strong>.
+    <form method="POST" action="{{ url_for('hr.send_reminder') }}" style="display:inline;">
+      <input type="hidden" name="id_period" value="{{ periode_aktif.id_period }}">
+      <button type="submit" class="btn btn-accent btn-sm" style="margin-left:12px;">
+        📢 Kirim Reminder
+      </button>
+    </form>
+  </div>
+</div>
+{% endif %}
+
+<!-- Stat Cards -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon green">👥</div>
+    <div class="stat-info">
+      <h3>{{ total_karyawan }}</h3>
+      <p>Total Karyawan</p>
+    </div>
+  </div>
+  <div class="stat-card accent">
+    <div class="stat-icon yellow">⏳</div>
+    <div class="stat-info">
+      <h3>{{ total_pending }}</h3>
+      <p>Penilaian Pending</p>
+    </div>
+  </div>
+  <div class="stat-card success">
+    <div class="stat-icon green">✅</div>
+    <div class="stat-info">
+      <h3>{{ total_selesai }}</h3>
+      <p>Penilaian Selesai</p>
+    </div>
+  </div>
+  <div class="stat-card info">
+    <div class="stat-icon blue">📅</div>
+    <div class="stat-info">
+      <h3>{{ periode_aktif.period_name if periode_aktif else '-' }}</h3>
+      <p>Periode Aktif</p>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid; grid-template-columns:2fr 1fr; gap:20px; margin-bottom:28px;">
+
+  <!-- Bar Chart: Completion per Divisi -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">📊 Completion Rate per Divisi</h3>
+      {% if periode_aktif %}
+      <form method="POST" action="{{ url_for('hr.calculate', id_period=periode_aktif.id_period) }}">
+        <button type="submit" class="btn btn-secondary btn-sm">⚙️ Hitung Nilai Sekarang</button>
+      </form>
+      {% endif %}
+    </div>
+    <div class="card-body">
+      {% if completion_by_division %}
+      <div class="chart-container">
+        <canvas id="completionChart"></canvas>
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">📊</div>
+        <h3>Belum Ada Data</h3>
+        <p>Assign evaluator terlebih dahulu untuk melihat grafik ini.</p>
+        <a href="{{ url_for('hr.assign') }}" class="btn btn-primary mt-4">🔗 Assign Evaluator</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Pending Users -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">⏳ Belum Mengisi</h3>
+    </div>
+    <div class="card-body" style="padding:0;">
+      {% if pending_users %}
+      <div style="max-height:300px; overflow-y:auto;">
+        {% for u in pending_users %}
+        <div style="padding:12px 20px; border-bottom:1px solid var(--color-border); display:flex; align-items:center; gap:12px;">
+          <div style="width:32px;height:32px;border-radius:50%;background:var(--color-primary-light);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
+            {{ u.nama[0]|upper }}
+          </div>
+          <div style="min-width:0;">
+            <div style="font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">{{ u.nama }}</div>
+            <div style="font-size:11px;color:var(--color-text-muted);">{{ u.division }} · {{ u.jenis_penilaian }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}
+      <div class="empty-state">
+        <div style="font-size:32px;">🎉</div>
+        <p style="font-size:13px;">Semua penilaian sudah selesai!</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Hasil Terbaru -->
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">🏆 Hasil Penilaian Terbaru</h3>
+    <a href="{{ url_for('hr.results') }}" class="btn btn-ghost btn-sm">Lihat Semua →</a>
+  </div>
+  <div class="table-wrapper">
+    {% if hasil_terbaru %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nama Karyawan</th>
+          <th>Divisi</th>
+          <th>Periode</th>
+          <th>Skor Atasan</th>
+          <th>Skor Rekan</th>
+          <th>Total Skor</th>
+          <th>Kategori</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in hasil_terbaru %}
+        <tr>
+          <td><strong>{{ h.nama }}</strong></td>
+          <td>{{ h.division }}</td>
+          <td>{{ h.period_name }}</td>
+          <td>{{ h.score_atasan or '-' }}</td>
+          <td>{{ h.score_rekan or '-' }}</td>
+          <td><strong>{{ h.total_score or '-' }}</strong></td>
+          <td>
+            {% if h.category %}
+            <span class="badge badge-{{ h.category|lower|replace(' ', '-') }}">{{ h.category }}</span>
+            {% else %}<span class="badge badge-draft">-</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📋</div>
+      <h3>Belum Ada Hasil</h3>
+      <p>Hasil penilaian akan muncul di sini setelah semua evaluator selesai dan nilai dihitung.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+{% if completion_by_division %}
+const labels = {{ completion_by_division | map(attribute='division') | list | tojson }};
+const totals  = {{ completion_by_division | map(attribute='total')   | list | tojson }};
+const selesai = {{ completion_by_division | map(attribute='selesai') | list | tojson }};
+const rates   = totals.map((t, i) => t > 0 ? Math.round((selesai[i]/t)*100) : 0);
+
+new Chart(document.getElementById('completionChart'), {
+  type: 'bar',
+  data: {
+    labels: labels,
+    datasets: [{
+      label: 'Selesai (%)',
+      data: rates,
+      backgroundColor: rates.map(r =>
+        r >= 80 ? 'rgba(0,107,60,0.8)' :
+        r >= 50 ? 'rgba(0,168,107,0.8)' :
+                  'rgba(245,166,35,0.8)'
+      ),
+      borderRadius: 8,
+      borderSkipped: false,
+    }]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => `Selesai: ${ctx.raw}%`
+        }
+      }
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+        max: 100,
+        ticks: { callback: v => v + '%' },
+        grid: { color: 'rgba(0,0,0,0.05)' }
+      },
+      x: { grid: { display: false } }
+    }
+  }
+});
+{% endif %}
+</script>
+{% endblock %}

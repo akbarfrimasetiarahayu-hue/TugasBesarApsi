@@ -1,0 +1,145 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard Karyawan{% endblock %}
+{% block page_title %}Dashboard Karyawan{% endblock %}
+
+{% block content %}
+
+{% if has_pending %}
+<div class="notification-banner mb-6">
+  <span style="font-size:22px;">✍️</span>
+  <div>
+    <strong>Self-assessment Anda belum selesai!</strong>
+    Segera lengkapi penilaian diri untuk periode
+    <strong>{{ periode_aktif.period_name }}</strong>.
+    <a href="{{ url_for('employee.self_assessment') }}" class="btn btn-accent btn-sm" style="margin-left:12px;">
+      Isi Sekarang →
+    </a>
+  </div>
+</div>
+{% endif %}
+
+<!-- Welcome Card -->
+<div class="card mb-6" style="background:linear-gradient(135deg,var(--color-primary-dark),var(--color-primary));color:white;border:none;">
+  <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;">
+    <div>
+      <h2 style="color:white;margin-bottom:6px;">Halo, {{ session.nama }}! 👋</h2>
+      <p style="color:rgba(255,255,255,0.8);margin:0;">
+        {% if periode_aktif %}
+        Periode aktif: <strong>{{ periode_aktif.period_name }}</strong>
+        ({{ periode_aktif.start_date }} — {{ periode_aktif.end_date }})
+        {% else %}
+        Tidak ada periode penilaian aktif saat ini.
+        {% endif %}
+      </p>
+    </div>
+    <div style="font-size:56px;opacity:0.6;">🌿</div>
+  </div>
+</div>
+
+<!-- Status Self-Assessment -->
+<div class="stat-grid">
+  <div class="stat-card">
+    <div class="stat-icon {{ 'green' if self_assessment_status == 'submitted' else 'yellow' }}">
+      {{ '✅' if self_assessment_status == 'submitted' else '⏳' }}
+    </div>
+    <div class="stat-info">
+      <h3 style="font-size:16px;">
+        {% if self_assessment_status == 'submitted' %}Selesai
+        {% elif self_assessment_status == 'pending' %}Pending
+        {% else %}—{% endif %}
+      </h3>
+      <p>Status Self-Assessment</p>
+    </div>
+  </div>
+
+  <div class="stat-card info">
+    <div class="stat-icon blue">📈</div>
+    <div class="stat-info">
+      <h3>{{ hasil|length }}</h3>
+      <p>Hasil Penilaian Tersedia</p>
+    </div>
+  </div>
+</div>
+
+<!-- Aksi Cepat -->
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:28px;">
+
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">✍️ Self-Assessment</h3></div>
+    <div class="card-body" style="text-align:center;">
+      {% if self_assessment_status == 'submitted' %}
+      <div style="font-size:48px;margin-bottom:12px;">🎉</div>
+      <p style="color:var(--color-text-muted);margin-bottom:16px;">Self-assessment sudah disubmit!</p>
+      <span class="badge badge-submitted" style="font-size:13px;padding:6px 16px;">✅ Submitted</span>
+      {% elif self_assessment_status == 'pending' %}
+      <div style="font-size:48px;margin-bottom:12px;">📝</div>
+      <p style="color:var(--color-text-muted);margin-bottom:16px;">
+        Lengkapi self-assessment Anda untuk periode ini.
+      </p>
+      <a href="{{ url_for('employee.self_assessment') }}" class="btn btn-primary">
+        ✍️ Isi Self-Assessment
+      </a>
+      {% else %}
+      <div style="font-size:48px;margin-bottom:12px;">🔒</div>
+      <p style="color:var(--color-text-muted);">Tidak ada self-assessment aktif.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">📊 Hasil Terbaru</h3></div>
+    <div class="card-body">
+      {% if hasil %}
+      {% for h in hasil %}
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--color-border);">
+        <div>
+          <div style="font-size:13px;font-weight:600;">{{ h.period_name }}</div>
+          <div style="font-size:12px;color:var(--color-text-muted);">{{ h.calculated_at[:10] if h.calculated_at else 'Baru saja' }}</div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:20px;font-weight:800;color:var(--color-primary);">{{ h.total_score or '—' }}</div>
+          <span class="badge badge-{{ h.category|lower|replace(' ', '-') if h.category else 'draft' }}">
+            {{ h.category or '—' }}
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+      <a href="{{ url_for('employee.my_results') }}" class="btn btn-outline w-100 mt-4">
+        📈 Lihat Detail Hasil
+      </a>
+      {% else %}
+      <div class="empty-state">
+        <div style="font-size:32px;">📊</div>
+        <p style="font-size:13px;">Hasil penilaian belum tersedia.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+
+<!-- Info AKHLAK -->
+<div class="card">
+  <div class="card-header"><h3 class="card-title">🌿 Core Values AKHLAK</h3></div>
+  <div class="card-body">
+    <div style="display:grid;grid-template-columns:repeat(6,1fr);gap:12px;">
+      {% set values = [
+        ('A', 'Amanah', 'amanah', 'Jujur dan bertanggung jawab'),
+        ('K', 'Kompeten', 'kompeten', 'Terus belajar dan berinovasi'),
+        ('H', 'Harmonis', 'harmonis', 'Saling peduli dan menghargai'),
+        ('L', 'Loyal', 'loyal', 'Berdedikasi dan mengutamakan negara'),
+        ('A', 'Adaptif', 'adaptif', 'Antusias terhadap perubahan'),
+        ('K', 'Kolaboratif', 'kolaboratif', 'Membangun kerja sama'),
+      ] %}
+      {% for letter, name, key, desc in values %}
+      <div style="text-align:center;padding:16px 8px;border:1px solid var(--color-border);border-radius:12px;">
+        <div class="badge badge-{{ key }}" style="width:36px;height:36px;border-radius:50%;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;margin:0 auto 8px;">{{ letter }}</div>
+        <div style="font-size:11px;font-weight:700;margin-bottom:4px;">{{ name }}</div>
+        <div style="font-size:10px;color:var(--color-text-muted);">{{ desc }}</div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+
+{% endblock %}

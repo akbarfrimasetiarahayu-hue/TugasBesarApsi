@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block title %}Self-Assessment{% endblock %}
+{% block page_title %}Self-Assessment AKHLAK{% endblock %}
+
+{% block content %}
+
+<div style="max-width:800px;margin:0 auto;">
+
+  <!-- Info Header -->
+  <div class="card mb-6" style="background:linear-gradient(135deg,var(--color-primary),var(--color-secondary));border:none;color:white;">
+    <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h3 style="color:white;margin-bottom:4px;">Self-Assessment Diri Sendiri</h3>
+        <p style="color:rgba(255,255,255,0.85);margin:0;font-size:13px;">
+          Periode: <strong>{{ periode.period_name }}</strong> |
+          Nilai setiap indikator secara jujur dari perspektif Anda sendiri (1–5)
+        </p>
+      </div>
+      <div style="font-size:48px;opacity:0.7;">✍️</div>
+    </div>
+  </div>
+
+  <!-- Skala Penilaian -->
+  <div class="card mb-6" style="padding:14px 20px;">
+    <div style="display:flex;gap:16px;flex-wrap:wrap;align-items:center;">
+      <strong style="font-size:13px;">Skala Penilaian:</strong>
+      {% for n, label, color in [
+        ('1','Belum Menunjukkan','#E63946'),
+        ('2','Perlu Perbaikan','#FF7F50'),
+        ('3','Cukup Baik','#F5A623'),
+        ('4','Baik','#00A86B'),
+        ('5','Sangat Baik','#006B3C')
+      ] %}
+      <div style="display:flex;align-items:center;gap:6px;">
+        <span style="width:26px;height:26px;border-radius:6px;background:{{ color }};color:white;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;">{{ n }}</span>
+        <span style="font-size:12px;color:var(--color-text-muted);">{{ label }}</span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Form Penilaian -->
+  <form method="POST" action="{{ url_for('employee.self_assessment') }}" id="assessForm">
+
+    {% set cv_colors = {1:'amanah',2:'kompeten',3:'harmonis',4:'loyal',5:'adaptif',6:'kolaboratif'} %}
+
+    {% for cv, data in grouped.items() %}
+    <div class="cv-card cv-{{ cv }} mb-6 fade-in-up" style="animation-delay:{{ (cv-1)*0.1 }}s">
+      <div class="cv-card-header">
+        <div class="cv-badge-circle">{{ cv }}</div>
+        <div>
+          <h3 style="font-size:16px;margin:0;">{{ data.label }}</h3>
+          <span class="badge badge-{{ cv_colors.get(cv, '') }}" style="margin-top:4px;">Core Value {{ cv }}/6</span>
+        </div>
+      </div>
+
+      {% for ind in data.indikators %}
+      <div style="padding:14px 0;{% if not loop.last %}border-bottom:1px solid var(--color-border);{% endif %}">
+        <div style="margin-bottom:10px;">
+          <p style="font-size:13.5px;font-weight:500;color:var(--color-text);margin:0;">
+            {{ loop.index }}. {{ ind.indikator_name }}
+          </p>
+        </div>
+        <div class="rating-group" id="rg_{{ ind.id_indikator }}">
+          {% for n in range(1, 6) %}
+          <input type="radio" class="rating-option"
+            name="score_{{ ind.id_indikator }}"
+            id="r{{ ind.id_indikator }}_{{ n }}"
+            value="{{ n }}"
+            {{ 'checked' if existing_scores.get(ind.id_indikator) == n }}
+            required>
+          <label class="rating-label" for="r{{ ind.id_indikator }}_{{ n }}" title="
+            {% if n==1 %}Belum Menunjukkan
+            {% elif n==2 %}Perlu Perbaikan
+            {% elif n==3 %}Cukup Baik
+            {% elif n==4 %}Baik
+            {% else %}Sangat Baik{% endif %}">{{ n }}</label>
+          {% endfor %}
+          <span style="font-size:12px;color:var(--color-text-muted);margin-left:8px;" id="label_{{ ind.id_indikator }}">
+            {% if existing_scores.get(ind.id_indikator) %}
+              {% set s = existing_scores.get(ind.id_indikator) %}
+              {{ ['','Belum Menunjukkan','Perlu Perbaikan','Cukup Baik','Baik','Sangat Baik'][s] }}
+            {% endif %}
+          </span>
+        </div>
+      </div>
+      {% endfor %}
+
+      <!-- Feedback per Core Value -->
+      <div style="margin-top:16px;">
+        <label class="form-label" style="font-size:12px;">
+          💬 Catatan / Feedback untuk {{ data.label }} (opsional):
+        </label>
+        <textarea class="form-control" name="feedback_{{ cv }}"
+          placeholder="Tuliskan catatan atau refleksi Anda tentang nilai {{ data.label }}..."
+          rows="2" style="resize:vertical;font-size:13px;"></textarea>
+      </div>
+    </div>
+    {% endfor %}
+
+    <!-- Tombol Submit -->
+    <div class="card" style="padding:20px 24px;display:flex;justify-content:space-between;align-items:center;gap:16px;">
+      <div style="font-size:13px;color:var(--color-text-muted);">
+        <span id="progressText">0 / {{ grouped.values() | map(attribute='indikators') | map('length') | sum }} indikator diisi</span>
+      </div>
+      <div style="display:flex;gap:12px;">
+        <button type="submit" name="action" value="draft" class="btn btn-ghost">
+          💾 Simpan Draft
+        </button>
+        <button type="submit" name="action" value="submit" class="btn btn-primary btn-lg" id="submitBtn">
+          🚀 Submit Self-Assessment
+        </button>
+      </div>
+    </div>
+
+  </form>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const labels = ['Belum Menunjukkan','Perlu Perbaikan','Cukup Baik','Baik','Sangat Baik'];
+const totalIndicators = {{ grouped.values() | map(attribute='indikators') | map('length') | sum }};
+
+// Update label teks saat memilih rating
+document.querySelectorAll('.rating-option').forEach(radio => {
+  radio.addEventListener('change', function() {
+    const idInd = this.name.replace('score_', '');
+    const labelEl = document.getElementById('label_' + idInd);
+    if (labelEl) labelEl.textContent = labels[parseInt(this.value) - 1];
+    updateProgress();
+  });
+});
+
+function updateProgress() {
+  const filled = document.querySelectorAll('.rating-option:checked').length;
+  document.getElementById('progressText').textContent = `${filled} / ${totalIndicators} indikator diisi`;
+}
+
+// Konfirmasi sebelum submit
+document.getElementById('assessForm').addEventListener('submit', function(e) {
+  const btn = document.activeElement;
+  if (btn && btn.value === 'submit') {
+    const filled = document.querySelectorAll('.rating-option:checked').length;
+    if (filled < totalIndicators) {
+      e.preventDefault();
+      alert(`Masih ada ${totalIndicators - filled} indikator yang belum diisi. Harap lengkapi semua indikator sebelum submit.`);
+      return;
+    }
+    if (!confirm('Setelah submit, penilaian tidak bisa diubah. Lanjutkan?')) {
+      e.preventDefault();
+    }
+  }
+});
+
+updateProgress();
+</script>
+{% endblock %}

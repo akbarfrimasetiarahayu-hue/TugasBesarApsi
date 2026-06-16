@@ -1,0 +1,97 @@
+{% extends 'base.html' %}
+{% block title %}Hasil Penilaian{% endblock %}
+{% block page_title %}Hasil Penilaian Semua Karyawan{% endblock %}
+
+{% block content %}
+
+<!-- Filter -->
+<div class="card mb-6" style="padding:16px 24px;">
+  <form method="GET" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <div>
+      <label class="form-label">Periode</label>
+      <select class="form-control" name="id_period" style="min-width:200px;">
+        <option value="">Semua Periode</option>
+        {% for p in periods_list %}
+        <option value="{{ p.id_period }}" {{ 'selected' if selected_period == p.id_period|string }}>
+          {{ p.period_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Divisi</label>
+      <select class="form-control" name="division" style="min-width:160px;">
+        <option value="">Semua Divisi</option>
+        {% for d in divisions %}
+        <option value="{{ d.division }}" {{ 'selected' if selected_division == d.division }}>
+          {{ d.division }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline">🔍 Filter</button>
+    <a href="{{ url_for('hr.results') }}" class="btn btn-ghost">Reset</a>
+
+    {% if selected_period %}
+    <form method="POST" action="{{ url_for('hr.calculate', id_period=selected_period) }}" style="margin-left:auto;">
+      <button type="submit" class="btn btn-secondary">⚙️ Hitung Nilai Ulang</button>
+    </form>
+    {% endif %}
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">🏆 Tabel Hasil Penilaian</h3>
+    {% if hasil %}
+    <span class="badge badge-submitted">{{ hasil|length }} karyawan</span>
+    {% endif %}
+  </div>
+  <div class="table-wrapper">
+    {% if hasil %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nama</th>
+          <th>NIP</th>
+          <th>Divisi</th>
+          <th>Periode</th>
+          <th>Atasan (40%)</th>
+          <th>Bawahan (30%)</th>
+          <th>Rekan (20%)</th>
+          <th>Self (10%)</th>
+          <th>Total Skor</th>
+          <th>Kategori</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in hasil %}
+        <tr>
+          <td><strong>{{ h.nama }}</strong></td>
+          <td><code style="font-size:11px;background:var(--color-surface-2);padding:2px 6px;border-radius:4px;">{{ h.nip }}</code></td>
+          <td>{{ h.division }}</td>
+          <td>{{ h.period_name }}</td>
+          <td style="text-align:center;">{{ h.score_atasan or '—' }}</td>
+          <td style="text-align:center;">{{ h.score_bawahan or '—' }}</td>
+          <td style="text-align:center;">{{ h.score_rekan or '—' }}</td>
+          <td style="text-align:center;">{{ h.score_self or '—' }}</td>
+          <td style="text-align:center;"><strong style="font-size:15px;">{{ h.total_score or '—' }}</strong></td>
+          <td>
+            {% if h.category %}
+            <span class="badge badge-{{ h.category|lower|replace(' ', '-') }}">{{ h.category }}</span>
+            {% else %}<span class="badge badge-draft">Belum Dihitung</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">🏆</div>
+      <h3>Belum Ada Hasil</h3>
+      <p>Pastikan semua evaluator sudah submit dan jalankan perhitungan nilai.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

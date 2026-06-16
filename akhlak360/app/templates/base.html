@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Sistem Penilaian 360° Core Values AKHLAK — PT. Energi Nusantara">
+  <title>{% block title %}AKHLAK 360°{% endblock %} — PT. Energi Nusantara</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+  <!-- CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+  <div class="app-wrapper">
+
+    <!-- ─── SIDEBAR ─── -->
+    <aside class="sidebar" id="sidebar">
+      <!-- Brand -->
+      <div class="sidebar-brand">
+        <div class="sidebar-brand-icon">🌿</div>
+        <div class="sidebar-brand-text">
+          <h3>AKHLAK 360°</h3>
+          <span>PT. Energi Nusantara</span>
+        </div>
+      </div>
+
+      <!-- User Info -->
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="userAvatar">
+          {{ session.nama[0]|upper if session.nama else 'U' }}
+        </div>
+        <div class="sidebar-user-info">
+          <div class="sidebar-user-name">{{ session.nama or 'Pengguna' }}</div>
+          <div class="sidebar-user-role">{{ session.role or 'guest' }}</div>
+        </div>
+      </div>
+
+      <!-- Navigation -->
+      <nav class="sidebar-nav">
+
+        {% if session.role == 'hr' %}
+        <div class="sidebar-section-label">HR Admin</div>
+        <a href="{{ url_for('hr.dashboard') }}" class="{{ 'active' if request.endpoint == 'hr.dashboard' }}">
+          <span class="nav-icon">📊</span> Dashboard
+        </a>
+        <a href="{{ url_for('hr.employees') }}" class="{{ 'active' if request.endpoint in ['hr.employees', 'hr.employee_add', 'hr.employee_edit'] }}">
+          <span class="nav-icon">👥</span> Data Karyawan
+        </a>
+        <a href="{{ url_for('hr.periods') }}" class="{{ 'active' if request.endpoint == 'hr.periods' }}">
+          <span class="nav-icon">📅</span> Periode Penilaian
+        </a>
+        <a href="{{ url_for('hr.assign') }}" class="{{ 'active' if request.endpoint == 'hr.assign' }}">
+          <span class="nav-icon">🔗</span> Assign Evaluator
+        </a>
+        <a href="{{ url_for('hr.results') }}" class="{{ 'active' if request.endpoint == 'hr.results' }}">
+          <span class="nav-icon">🏆</span> Hasil Penilaian
+        </a>
+        <a href="{{ url_for('hr.reports') }}" class="{{ 'active' if request.endpoint == 'hr.reports' }}">
+          <span class="nav-icon">📄</span> Laporan
+        </a>
+
+        {% elif session.role == 'karyawan' %}
+        <div class="sidebar-section-label">Karyawan</div>
+        <a href="{{ url_for('employee.dashboard') }}" class="{{ 'active' if request.endpoint == 'employee.dashboard' }}">
+          <span class="nav-icon">🏠</span> Dashboard
+        </a>
+        <a href="{{ url_for('employee.self_assessment') }}" class="{{ 'active' if request.endpoint == 'employee.self_assessment' }}">
+          <span class="nav-icon">✍️</span> Self-Assessment
+        </a>
+        <a href="{{ url_for('employee.my_results') }}" class="{{ 'active' if request.endpoint == 'employee.my_results' }}">
+          <span class="nav-icon">📈</span> Hasil Saya
+        </a>
+
+        {% elif session.role == 'evaluator' %}
+        <div class="sidebar-section-label">Evaluator</div>
+        <a href="{{ url_for('evaluator.dashboard') }}" class="{{ 'active' if request.endpoint == 'evaluator.dashboard' }}">
+          <span class="nav-icon">📋</span> Dashboard
+        </a>
+
+        {% elif session.role == 'management' %}
+        <div class="sidebar-section-label">Management</div>
+        <a href="{{ url_for('management.dashboard') }}" class="{{ 'active' if request.endpoint == 'management.dashboard' }}">
+          <span class="nav-icon">📊</span> Dashboard
+        </a>
+        <a href="{{ url_for('management.performance') }}" class="{{ 'active' if request.endpoint == 'management.performance' }}">
+          <span class="nav-icon">🏆</span> Performance
+        </a>
+        <a href="{{ url_for('management.reports') }}" class="{{ 'active' if request.endpoint == 'management.reports' }}">
+          <span class="nav-icon">📄</span> Laporan
+        </a>
+        {% endif %}
+
+      </nav>
+
+      <!-- Logout -->
+      <div class="sidebar-footer">
+        <a href="{{ url_for('auth.logout') }}" id="logoutLink">
+          <span class="nav-icon">🚪</span> Logout
+        </a>
+      </div>
+    </aside>
+
+    <!-- ─── MAIN CONTENT ─── -->
+    <div class="main-content">
+
+      <!-- Top Header -->
+      <header class="top-header">
+        <h1 class="page-title">{% block page_title %}Dashboard{% endblock %}</h1>
+        <div class="header-actions">
+          <span style="font-size:12px; color:var(--color-text-muted);">
+            📅 {{ now if now else '' }}
+          </span>
+        </div>
+      </header>
+
+      <!-- Flash Messages -->
+      <div style="padding: 0 28px;">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            {% for category, message in messages %}
+              <div class="alert alert-{{ category }}" style="margin-top:16px;">
+                <span>
+                  {% if category == 'success' %}✅
+                  {% elif category == 'danger' %}❌
+                  {% elif category == 'warning' %}⚠️
+                  {% else %}ℹ️{% endif %}
+                </span>
+                {{ message }}
+              </div>
+            {% endfor %}
+          {% endif %}
+        {% endwith %}
+      </div>
+
+      <!-- Page Content -->
+      <div class="content-wrapper">
+        {% block content %}{% endblock %}
+      </div>
+
+    </div><!-- end .main-content -->
+  </div><!-- end .app-wrapper -->
+
+  <!-- JS -->
+  <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  {% block extra_scripts %}{% endblock %}
+
+  <script>
+    // Auto-dismiss alerts after 5 seconds
+    setTimeout(() => {
+      document.querySelectorAll('.alert').forEach(el => {
+        el.style.transition = 'opacity 0.5s ease';
+        el.style.opacity = '0';
+        setTimeout(() => el.remove(), 500);
+      });
+    }, 5000);
+  </script>
+</body>
+</html>

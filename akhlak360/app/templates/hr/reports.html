@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Laporan{% endblock %}
+{% block page_title %}Generate Laporan{% endblock %}
+
+{% block content %}
+
+<div style="display:grid;grid-template-columns:380px 1fr;gap:24px;">
+
+  <!-- Panel Generate -->
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">📥 Generate Laporan</h3></div>
+    <div class="card-body">
+      <form method="POST" action="{{ url_for('hr.generate_report') }}">
+        <div class="form-group">
+          <label class="form-label">Pilih Periode *</label>
+          <select class="form-control" name="id_period" required>
+            <option value="">— Pilih periode —</option>
+            {% for p in periods_list %}
+            <option value="{{ p.id_period }}">{{ p.period_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Format Laporan</label>
+          <div style="display:flex;gap:12px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:12px 16px;border:2px solid var(--color-border);border-radius:10px;flex:1;transition:all 0.2s;" id="excelLabel">
+              <input type="radio" name="report_type" value="excel" checked onchange="updateFormat()">
+              <span>📊 Excel (.xlsx)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:12px 16px;border:2px solid var(--color-border);border-radius:10px;flex:1;transition:all 0.2s;" id="pdfLabel">
+              <input type="radio" name="report_type" value="pdf" onchange="updateFormat()">
+              <span>📄 PDF</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="card" style="background:var(--color-primary-light);border:none;padding:14px;margin-bottom:16px;">
+          <p style="font-size:12px;color:var(--color-primary);font-weight:600;">📋 Konten Laporan:</p>
+          <ul style="font-size:12px;color:var(--color-text-muted);margin:6px 0 0;padding-left:16px;">
+            <li>Header: nama perusahaan, periode, tanggal</li>
+            <li>Tabel: nama, NIP, divisi, skor per jenis, total, kategori</li>
+            <li>Summary: rata-rata per divisi</li>
+          </ul>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 btn-lg">
+          ⬇️ Download Laporan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Log Laporan -->
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">📜 Riwayat Generate</h3></div>
+    <div class="table-wrapper">
+      {% if report_logs %}
+      <table>
+        <thead>
+          <tr>
+            <th>Periode</th>
+            <th>Format</th>
+            <th>Tanggal Generate</th>
+            <th>Oleh</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for log in report_logs %}
+          <tr>
+            <td>{{ log.period_name }}</td>
+            <td><span class="badge badge-{{ 'submitted' if log.report_type == 'excel' else 'kompeten' }}">
+              {{ '📊 Excel' if log.report_type == 'excel' else '📄 PDF' }}
+            </span></td>
+            <td>{{ log.generate_date }}</td>
+            <td>{{ log.generated_by_nama or '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div class="empty-state">
+        <div class="empty-state-icon">📄</div>
+        <h3>Belum Ada Laporan</h3>
+        <p>Generate laporan pertama Anda di panel sebelah kiri.</p>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function updateFormat() {
+  const excel = document.querySelector('input[value="excel"]').checked;
+  document.getElementById('excelLabel').style.borderColor = excel ? 'var(--color-primary)' : 'var(--color-border)';
+  document.getElementById('pdfLabel').style.borderColor   = !excel ? 'var(--color-primary)' : 'var(--color-border)';
+}
+updateFormat();
+</script>
+{% endblock %}

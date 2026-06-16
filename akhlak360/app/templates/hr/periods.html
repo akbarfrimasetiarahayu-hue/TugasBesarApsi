@@ -1,0 +1,153 @@
+{% extends 'base.html' %}
+{% block title %}Periode Penilaian{% endblock %}
+{% block page_title %}Periode Penilaian{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+  <div>
+    <h2 class="section-title">📅 Manajemen Periode Penilaian</h2>
+    <p style="color:var(--color-text-muted);font-size:13px;">Atur jadwal periode penilaian karyawan</p>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('addModal')">➕ Buat Periode Baru</button>
+</div>
+
+<div class="card">
+  <div class="table-wrapper">
+    {% if daftar %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nama Periode</th>
+          <th>Tanggal Mulai</th>
+          <th>Tanggal Selesai</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for p in daftar %}
+        <tr>
+          <td><strong>{{ p.period_name }}</strong></td>
+          <td>{{ p.start_date }}</td>
+          <td>{{ p.end_date }}</td>
+          <td><span class="badge badge-{{ p.status }}">{{ p.status|title }}</span></td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="openEditModal(
+                {{ p.id_period }}, '{{ p.period_name }}', '{{ p.start_date }}',
+                '{{ p.end_date }}', '{{ p.status }}'
+              )">✏️ Edit</button>
+              <form method="POST" action="{{ url_for('hr.period_delete', id_period=p.id_period) }}"
+                    onsubmit="return confirm('Hapus periode ini?')">
+                <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">📅</div>
+      <h3>Belum Ada Periode</h3>
+      <p>Buat periode penilaian baru untuk memulai proses evaluasi.</p>
+      <button class="btn btn-primary mt-4" onclick="openModal('addModal')">➕ Buat Periode</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- Modal Tambah -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">➕ Buat Periode Baru</h3>
+      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('hr.period_add') }}">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nama Periode *</label>
+          <input type="text" class="form-control" name="period_name"
+            placeholder="Contoh: Semester 1 2026" required>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Tanggal Mulai *</label>
+            <input type="date" class="form-control" name="start_date" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tanggal Selesai *</label>
+            <input type="date" class="form-control" name="end_date" required>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('addModal')">Batal</button>
+        <button type="submit" class="btn btn-primary">💾 Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal Edit -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">✏️ Edit Periode</h3>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <form method="POST" id="editForm" action="">
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Nama Periode *</label>
+          <input type="text" class="form-control" name="period_name" id="editName" required>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Tanggal Mulai *</label>
+            <input type="date" class="form-control" name="start_date" id="editStart" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tanggal Selesai *</label>
+            <input type="date" class="form-control" name="end_date" id="editEnd" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control" name="status" id="editStatus">
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="closed">Closed</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('editModal')">Batal</button>
+        <button type="submit" class="btn btn-primary">💾 Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openModal(id) { document.getElementById(id).classList.add('active'); }
+function closeModal(id) { document.getElementById(id).classList.remove('active'); }
+function openEditModal(id, name, start, end, status) {
+  document.getElementById('editForm').action = `/hr/periods/edit/${id}`;
+  document.getElementById('editName').value   = name;
+  document.getElementById('editStart').value  = start;
+  document.getElementById('editEnd').value    = end;
+  document.getElementById('editStatus').value = status;
+  openModal('editModal');
+}
+document.querySelectorAll('.modal-overlay').forEach(o => {
+  o.addEventListener('click', e => { if(e.target===o) o.classList.remove('active'); });
+});
+</script>
+{% endblock %}

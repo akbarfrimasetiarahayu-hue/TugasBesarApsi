@@ -1,0 +1,83 @@
+{% extends 'base.html' %}
+{% block title %}Laporan Executive{% endblock %}
+{% block page_title %}Download Laporan Penilaian{% endblock %}
+
+{% block content %}
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;">
+
+  <!-- Form Generate -->
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">📥 Unduh Laporan</h3></div>
+    <div class="card-body">
+      <p style="font-size:13px;color:var(--color-text-muted);margin-bottom:20px;">
+        Generate laporan hasil penilaian 360 derajat untuk seluruh karyawan berdasarkan periode.
+      </p>
+
+      <form method="POST" action="{{ url_for('management.generate_report') }}">
+        <div class="form-group">
+          <label class="form-label">Pilih Periode *</label>
+          <select class="form-control" name="id_period" required>
+            <option value="">— Pilih periode —</option>
+            {% for p in periods_list %}
+            <option value="{{ p.id_period }}">{{ p.period_name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Format Laporan</label>
+          <div style="display:flex;gap:12px;">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:12px 16px;border:2px solid var(--color-primary);border-radius:10px;flex:1;transition:all 0.2s;" id="excelLabel">
+              <input type="radio" name="report_type" value="excel" checked onchange="updateFormat()">
+              <span>📊 Excel (.xlsx)</span>
+            </label>
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:12px 16px;border:2px solid var(--color-border);border-radius:10px;flex:1;transition:all 0.2s;" id="pdfLabel">
+              <input type="radio" name="report_type" value="pdf" onchange="updateFormat()">
+              <span>📄 PDF Executive</span>
+            </label>
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 btn-lg mt-4">
+          ⬇️ Generate & Download Laporan
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Info -->
+  <div>
+    <div class="card" style="background:var(--color-primary-light);border:none;">
+      <div class="card-header" style="border-bottom-color:rgba(0,107,60,0.1);">
+        <h3 class="card-title" style="color:var(--color-primary);">ℹ️ Informasi Laporan</h3>
+      </div>
+      <div class="card-body">
+        <div style="margin-bottom:16px;">
+          <h4 style="font-size:14px;color:var(--color-primary);margin-bottom:4px;">Laporan Excel</h4>
+          <p style="font-size:13px;color:var(--color-text-muted);">
+            Berisi data mentah skor tiap karyawan per jenis evaluator, total skor, kategori akhir, dan ringkasan nilai rata-rata tiap divisi. Cocok untuk analisis lebih lanjut.
+          </p>
+        </div>
+        <div>
+          <h4 style="font-size:14px;color:var(--color-primary);margin-bottom:4px;">Laporan PDF</h4>
+          <p style="font-size:13px;color:var(--color-text-muted);">
+            Laporan formal dengan kop surat perusahaan PT. Energi Nusantara yang sudah diformat rapi untuk kebutuhan presentasi dan arsip.
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function updateFormat() {
+  const excel = document.querySelector('input[value="excel"]').checked;
+  document.getElementById('excelLabel').style.borderColor = excel ? 'var(--color-primary)' : 'var(--color-border)';
+  document.getElementById('pdfLabel').style.borderColor   = !excel ? 'var(--color-primary)' : 'var(--color-border)';
+}
+</script>
+{% endblock %}

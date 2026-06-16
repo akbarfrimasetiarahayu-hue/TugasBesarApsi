@@ -1,0 +1,249 @@
+{% extends 'base.html' %}
+{% block title %}Hasil Penilaian Saya{% endblock %}
+{% block page_title %}Hasil Penilaian Saya{% endblock %}
+
+{% block content %}
+
+<!-- Header Periode -->
+<div class="card mb-6" style="padding:16px 24px;display:flex;justify-content:space-between;align-items:center;">
+  <div>
+    <h3 class="card-title">📅 Periode Penilaian</h3>
+    <p style="color:var(--color-text-muted);font-size:13px;margin-top:4px;">
+      Lihat hasil penilaian dan gap analysis per periode
+    </p>
+  </div>
+  <form method="GET" style="display:flex;gap:12px;align-items:center;">
+    <select class="form-control" name="id_period" style="min-width:240px;">
+      {% for p in periods_list %}
+      <option value="{{ p.id_period }}" {{ 'selected' if selected_period == p.id_period|string }}>
+        {{ p.period_name }}
+      </option>
+      {% endfor %}
+    </select>
+    <button type="submit" class="btn btn-outline">Tampilkan</button>
+  </form>
+</div>
+
+{% if hasil %}
+
+<!-- Skor Akhir Card -->
+<div class="card mb-6" style="background:var(--color-primary-dark);color:white;border:none;">
+  <div class="card-body" style="display:flex;justify-content:space-between;align-items:center;padding:32px 40px;">
+    <div>
+      <p style="color:rgba(255,255,255,0.7);font-size:14px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">
+        TOTAL SKOR AKHLAK
+      </p>
+      <div style="display:flex;align-items:flex-end;gap:16px;">
+        <span style="font-size:56px;font-weight:800;line-height:1;color:var(--color-accent);">{{ hasil.total_score }}</span>
+        <span class="badge badge-{{ hasil.category|lower|replace(' ', '-') }}" style="font-size:14px;padding:6px 16px;margin-bottom:12px;">
+          {{ hasil.category }}
+        </span>
+      </div>
+    </div>
+    <div style="text-align:right;">
+      <p style="font-size:13px;color:rgba(255,255,255,0.7);margin-bottom:4px;">Rincian Bobot:</p>
+      <div style="display:flex;gap:16px;">
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:700;">{{ hasil.score_atasan or '-' }}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);">Atasan 40%</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:700;">{{ hasil.score_bawahan or '-' }}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);">Bawahan 30%</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:700;">{{ hasil.score_rekan or '-' }}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);">Rekan 20%</div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:16px;font-weight:700;">{{ hasil.score_self or '-' }}</div>
+          <div style="font-size:11px;color:rgba(255,255,255,0.6);">Self 10%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:28px;">
+
+  <!-- Radar Chart: Gap Analysis -->
+  <div class="card">
+    <div class="card-header"><h3 class="card-title">🕸️ Gap Analysis: Profil AKHLAK</h3></div>
+    <div class="card-body">
+      <div class="chart-container-lg">
+        <canvas id="radarChart"></canvas>
+      </div>
+      <p style="font-size:12px;color:var(--color-text-muted);text-align:center;margin-top:16px;">
+        Grafik menunjukkan perbandingan penilaian dari berbagai perspektif terhadap 6 nilai inti AKHLAK.
+      </p>
+    </div>
+  </div>
+
+  <div style="display:flex;flex-direction:column;gap:24px;">
+
+    <!-- Tabel Gap Analysis -->
+    <div class="card">
+      <div class="card-header"><h3 class="card-title">🔍 Rincian Skor per Nilai</h3></div>
+      <div class="table-wrapper" style="border:none;">
+        <table>
+          <thead>
+            <tr>
+              <th>Core Value</th>
+              <th>Atasan</th>
+              <th>Rekan</th>
+              <th>Gap (Max-Min)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for ga in gap_analysis %}
+            <tr>
+              <td><strong>{{ ga.core_value }}</strong></td>
+              <td style="text-align:center;">{{ ga.atasan if ga.atasan > 0 else '-' }}</td>
+              <td style="text-align:center;">{{ ga.rekan if ga.rekan > 0 else '-' }}</td>
+              <td style="text-align:center;">
+                {% if ga.gap >= 1.5 %}
+                <span class="badge badge-kurang" style="font-size:11px;">{{ ga.gap }}</span>
+                {% elif ga.gap >= 1.0 %}
+                <span class="badge badge-cukup" style="font-size:11px;">{{ ga.gap }}</span>
+                {% else %}
+                <span class="badge badge-baik" style="font-size:11px;background:none;color:var(--color-text-muted);">{{ ga.gap }}</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- IDP Rekomendasi -->
+    <div class="card" style="flex:1;">
+      <div class="card-header"><h3 class="card-title">💡 Rekomendasi Pengembangan (IDP)</h3></div>
+      <div class="card-body">
+        {% if idp_rekomendasi %}
+        <p style="font-size:13px;color:var(--color-text-muted);margin-bottom:16px;">
+          Berdasarkan hasil analisis, berikut adalah area yang perlu dikembangkan:
+        </p>
+        {% for idp in idp_rekomendasi %}
+        <div class="idp-card">
+          <h4>{{ idp.core_value }} (Skor rata-rata: {{ "%.2f"|format(idp.avg) }})</h4>
+          <p>{{ idp.rekomendasi }}</p>
+        </div>
+        {% endfor %}
+        {% else %}
+        <div class="empty-state" style="padding:24px;">
+          <div style="font-size:32px;">🌟</div>
+          <h4 style="margin-top:12px;">Performa Sangat Baik!</h4>
+          <p style="font-size:13px;">Tidak ada core value yang memiliki skor di bawah 4.0. Terus pertahankan prestasi Anda.</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+{% else %}
+<div class="card">
+  <div class="empty-state">
+    <div class="empty-state-icon">📊</div>
+    <h3>Belum Ada Hasil</h3>
+    <p>Hasil penilaian untuk periode ini belum tersedia. Jika Anda belum menyelesaikan self-assessment, silakan selesaikan terlebih dahulu.</p>
+    {% if not periods_list %}
+    <p>Belum ada periode penilaian yang diselesaikan.</p>
+    {% endif %}
+  </div>
+</div>
+{% endif %}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{% if radar_data %}
+<script>
+const radarCtx = document.getElementById('radarChart').getContext('2d');
+const radarData = {{ radar_data | tojson | safe }};
+
+new Chart(radarCtx, {
+  type: 'radar',
+  data: {
+    labels: radarData.labels,
+    datasets: [
+      {
+        label: 'Atasan (40%)',
+        data: radarData.datasets.atasan,
+        backgroundColor: 'rgba(0, 107, 60, 0.2)',
+        borderColor: 'rgba(0, 107, 60, 1)',
+        pointBackgroundColor: 'rgba(0, 107, 60, 1)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(0, 107, 60, 1)'
+      },
+      {
+        label: 'Bawahan (30%)',
+        data: radarData.datasets.bawahan,
+        backgroundColor: 'rgba(52, 152, 219, 0.2)',
+        borderColor: 'rgba(52, 152, 219, 1)',
+        pointBackgroundColor: 'rgba(52, 152, 219, 1)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(52, 152, 219, 1)'
+      },
+      {
+        label: 'Rekan (20%)',
+        data: radarData.datasets.rekan,
+        backgroundColor: 'rgba(245, 166, 35, 0.2)',
+        borderColor: 'rgba(245, 166, 35, 1)',
+        pointBackgroundColor: 'rgba(245, 166, 35, 1)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(245, 166, 35, 1)',
+        hidden: true // Hide by default to reduce clutter
+      },
+      {
+        label: 'Self (10%)',
+        data: radarData.datasets.self,
+        backgroundColor: 'rgba(155, 89, 182, 0.2)',
+        borderColor: 'rgba(155, 89, 182, 1)',
+        pointBackgroundColor: 'rgba(155, 89, 182, 1)',
+        pointBorderColor: '#fff',
+        pointHoverBackgroundColor: '#fff',
+        pointHoverBorderColor: 'rgba(155, 89, 182, 1)'
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      r: {
+        angleLines: { color: 'rgba(0, 0, 0, 0.1)' },
+        grid: { color: 'rgba(0, 0, 0, 0.1)' },
+        pointLabels: {
+          font: { family: "'Plus Jakarta Sans', sans-serif", size: 12, weight: 'bold' },
+          color: '#1A2332'
+        },
+        ticks: {
+          min: 1,
+          max: 5,
+          stepSize: 1,
+          backdropColor: 'transparent',
+          color: '#6B7280'
+        }
+      }
+    },
+    plugins: {
+      legend: { position: 'bottom', labels: { usePointStyle: true, boxWidth: 10 } },
+      tooltip: {
+        backgroundColor: 'rgba(26, 35, 50, 0.9)',
+        titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 14 },
+        bodyFont: { family: "'Inter', sans-serif", size: 13 },
+        padding: 12,
+        cornerRadius: 8
+      }
+    }
+  }
+});
+</script>
+{% endif %}
+{% endblock %}

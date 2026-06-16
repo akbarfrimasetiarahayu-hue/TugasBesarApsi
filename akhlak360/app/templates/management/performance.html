@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% block title %}Performance Review{% endblock %}
+{% block page_title %}Performance Review Karyawan{% endblock %}
+
+{% block content %}
+
+<!-- Filter -->
+<div class="card mb-6" style="padding:16px 24px;">
+  <form method="GET" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+    <div>
+      <label class="form-label">Periode</label>
+      <select class="form-control" name="id_period" style="min-width:200px;">
+        <option value="">Semua Periode</option>
+        {% for p in periods_list %}
+        <option value="{{ p.id_period }}" {{ 'selected' if selected_period == p.id_period|string }}>
+          {{ p.period_name }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <div>
+      <label class="form-label">Divisi</label>
+      <select class="form-control" name="division" style="min-width:160px;">
+        <option value="">Semua Divisi</option>
+        {% for d in divisions %}
+        <option value="{{ d.division }}" {{ 'selected' if selected_division == d.division }}>
+          {{ d.division }}
+        </option>
+        {% endfor %}
+      </select>
+    </div>
+    <button type="submit" class="btn btn-outline">🔍 Filter</button>
+    <a href="{{ url_for('management.performance') }}" class="btn btn-ghost">Reset</a>
+  </form>
+</div>
+
+<div class="card">
+  <div class="card-header">
+    <h3 class="card-title">🏆 Kinerja Karyawan</h3>
+    {% if hasil %}
+    <span class="badge badge-submitted">{{ hasil|length }} karyawan</span>
+    {% endif %}
+  </div>
+  <div class="table-wrapper">
+    {% if hasil %}
+    <table>
+      <thead>
+        <tr>
+          <th>Karyawan</th>
+          <th>NIP</th>
+          <th>Divisi & Jabatan</th>
+          <th>Periode</th>
+          <th>Total Skor</th>
+          <th>Kategori</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for h in hasil %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--color-primary-light);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
+                {{ h.nama[0]|upper }}
+              </div>
+              <strong>{{ h.nama }}</strong>
+            </div>
+          </td>
+          <td><code style="font-size:11px;background:var(--color-surface-2);padding:2px 6px;border-radius:4px;">{{ h.nip }}</code></td>
+          <td>
+            <div style="font-size:13px;">{{ h.division }}</div>
+            <div style="font-size:11px;color:var(--color-text-muted);">{{ h.position }}</div>
+          </td>
+          <td>{{ h.period_name }}</td>
+          <td><strong style="font-size:15px;color:var(--color-primary);">{{ h.total_score or '—' }}</strong></td>
+          <td>
+            {% if h.category %}
+            <span class="badge badge-{{ h.category|lower|replace(' ', '-') }}">{{ h.category }}</span>
+            {% else %}<span class="badge badge-draft">Belum Dihitung</span>{% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">🏆</div>
+      <h3>Data Tidak Ditemukan</h3>
+      <p>Pastikan periode yang dipilih sudah memiliki hasil penilaian.</p>
+    </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

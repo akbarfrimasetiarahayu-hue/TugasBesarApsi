@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% block title %}Data Karyawan{% endblock %}
+{% block page_title %}Data Karyawan{% endblock %}
+
+{% block content %}
+
+<div class="section-header">
+  <div>
+    <h2 class="section-title">👥 Daftar Karyawan</h2>
+    <p style="color:var(--color-text-muted);font-size:13px;">Kelola data karyawan PT. Energi Nusantara</p>
+  </div>
+  <button class="btn btn-primary" onclick="openModal('addModal')">
+    ➕ Tambah Karyawan
+  </button>
+</div>
+
+<!-- Search -->
+<div class="card mb-6" style="padding:16px 24px;">
+  <form method="GET" style="display:flex;gap:12px;align-items:center;">
+    <input type="text" class="form-control" name="search" value="{{ search }}"
+      placeholder="🔍 Cari nama, NIP, atau divisi..." style="max-width:360px;">
+    <button type="submit" class="btn btn-outline">Cari</button>
+    {% if search %}<a href="{{ url_for('hr.employees') }}" class="btn btn-ghost">✕ Reset</a>{% endif %}
+  </form>
+</div>
+
+<!-- Tabel Karyawan -->
+<div class="card">
+  <div class="table-wrapper">
+    {% if daftar %}
+    <table>
+      <thead>
+        <tr>
+          <th>Nama</th>
+          <th>NIP</th>
+          <th>Email</th>
+          <th>Jabatan</th>
+          <th>Divisi</th>
+          <th>Atasan</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for emp in daftar %}
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px;">
+              <div style="width:32px;height:32px;border-radius:50%;background:var(--color-primary-light);color:var(--color-primary);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0;">
+                {{ emp.nama[0]|upper }}
+              </div>
+              <strong>{{ emp.nama }}</strong>
+            </div>
+          </td>
+          <td><code style="background:var(--color-surface-2);padding:2px 8px;border-radius:4px;font-size:12px;">{{ emp.nip }}</code></td>
+          <td style="color:var(--color-text-muted);font-size:13px;">{{ emp.email }}</td>
+          <td>{{ emp.position }}</td>
+          <td><span class="badge badge-draft">{{ emp.division }}</span></td>
+          <td style="color:var(--color-text-muted);font-size:13px;">{{ emp.nama_supervisor or '—' }}</td>
+          <td>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="openEditModal(
+                {{ emp.user_id }}, '{{ emp.nama }}', '{{ emp.email }}',
+                '{{ emp.nip }}', '{{ emp.position }}', '{{ emp.division }}',
+                {{ emp.id_supervisor or 'null' }}
+              )">✏️ Edit</button>
+              <button class="btn btn-danger btn-sm" onclick="openDeleteModal({{ emp.user_id }}, '{{ emp.nama }}')">
+                🗑️ Hapus
+              </button>
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <div class="empty-state">
+      <div class="empty-state-icon">👥</div>
+      <h3>Tidak Ada Karyawan</h3>
+      <p>{% if search %}Tidak ditemukan karyawan dengan kata kunci "{{ search }}".{% else %}Belum ada data karyawan.{% endif %}</p>
+      <button class="btn btn-primary mt-4" onclick="openModal('addModal')">➕ Tambah Karyawan</button>
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- ─── MODAL TAMBAH KARYAWAN ─── -->
+<div class="modal-overlay" id="addModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">➕ Tambah Karyawan Baru</h3>
+      <button class="modal-close" onclick="closeModal('addModal')">✕</button>
+    </div>
+    <form method="POST" action="{{ url_for('hr.employee_add') }}">
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap *</label>
+            <input type="text" class="form-control" name="nama" placeholder="Nama karyawan" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIP *</label>
+            <input type="text" class="form-control" name="nip" placeholder="EN-XXX" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-control" name="email" placeholder="nama@energinusantara.co.id" required>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Jabatan *</label>
+            <input type="text" class="form-control" name="position" placeholder="Jabatan/posisi" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Divisi *</label>
+            <input type="text" class="form-control" name="division" placeholder="Nama divisi" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Atasan Langsung</label>
+          <select class="form-control" name="id_supervisor">
+            <option value="">— Tidak ada atasan —</option>
+            {% for emp in all_employees %}
+            <option value="{{ emp.user_id }}">{{ emp.nama }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('addModal')">Batal</button>
+        <button type="submit" class="btn btn-primary">💾 Simpan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ─── MODAL EDIT KARYAWAN ─── -->
+<div class="modal-overlay" id="editModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title">✏️ Edit Karyawan</h3>
+      <button class="modal-close" onclick="closeModal('editModal')">✕</button>
+    </div>
+    <form method="POST" id="editForm" action="">
+      <div class="modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Nama Lengkap *</label>
+            <input type="text" class="form-control" name="nama" id="editNama" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">NIP *</label>
+            <input type="text" class="form-control" name="nip" id="editNip" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email *</label>
+          <input type="email" class="form-control" name="email" id="editEmail" required>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+          <div class="form-group">
+            <label class="form-label">Jabatan *</label>
+            <input type="text" class="form-control" name="position" id="editPosition" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Divisi *</label>
+            <input type="text" class="form-control" name="division" id="editDivision" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Atasan Langsung</label>
+          <select class="form-control" name="id_supervisor" id="editSupervisor">
+            <option value="">— Tidak ada atasan —</option>
+            {% for emp in all_employees %}
+            <option value="{{ emp.user_id }}">{{ emp.nama }}</option>
+            {% endfor %}
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-ghost" onclick="closeModal('editModal')">Batal</button>
+        <button type="submit" class="btn btn-primary">💾 Simpan Perubahan</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ─── MODAL HAPUS ─── -->
+<div class="modal-overlay" id="deleteModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 class="modal-title" style="color:var(--color-danger);">🗑️ Hapus Karyawan</h3>
+      <button class="modal-close" onclick="closeModal('deleteModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <p>Apakah Anda yakin ingin menghapus karyawan <strong id="deleteNama"></strong>?</p>
+      <p style="color:var(--color-text-muted);font-size:13px;margin-top:8px;">
+        Tindakan ini tidak dapat dibatalkan. Semua data terkait karyawan ini juga akan dihapus.
+      </p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">Batal</button>
+      <form method="POST" id="deleteForm" action="">
+        <button type="submit" class="btn btn-danger">🗑️ Ya, Hapus</button>
+      </form>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function openModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+function openEditModal(id, nama, email, nip, position, division, supervisor) {
+  document.getElementById('editForm').action = `/hr/employees/edit/${id}`;
+  document.getElementById('editNama').value     = nama;
+  document.getElementById('editEmail').value    = email;
+  document.getElementById('editNip').value      = nip;
+  document.getElementById('editPosition').value = position;
+  document.getElementById('editDivision').value = division;
+  const sel = document.getElementById('editSupervisor');
+  sel.value = supervisor || '';
+  openModal('editModal');
+}
+
+function openDeleteModal(id, nama) {
+  document.getElementById('deleteNama').textContent = nama;
+  document.getElementById('deleteForm').action = `/hr/employees/delete/${id}`;
+  openModal('deleteModal');
+}
+
+// Tutup modal saat klik di luar
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+});
+</script>
+{% endblock %}
