@@ -39,4 +39,7 @@ def create_app():
     app.register_blueprint(evaluator_bp, url_prefix='/evaluator')
     app.register_blueprint(management_bp, url_prefix='/management')
 
+    from database import close_db
+    app.teardown_appcontext(close_db)
+
     return app

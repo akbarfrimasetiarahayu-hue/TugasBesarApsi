@@ -38,7 +38,7 @@ def dashboard():
                       e.nama as nama_karyawan, e.division, e.position
                FROM penilaians p
                JOIN employees e ON p.id_karyawan = e.user_id
-               WHERE p.id_period = ? AND p.id_evaluator = ? AND p.jenis_penilaian != 'self'
+               WHERE p.id_period = %s AND p.id_evaluator = %s AND p.jenis_penilaian != 'self'
                ORDER BY p.status ASC, e.nama ASC""",
             (periode_aktif['id_period'], user_id)
         )
@@ -63,7 +63,7 @@ def assess(id_penilaian):
 
     # Validasi: penilaian ini milik evaluator ini
     penilaian = query_db(
-        "SELECT * FROM penilaians WHERE id_penilaian=? AND id_evaluator=?",
+        "SELECT * FROM penilaians WHERE id_penilaian=%s AND id_evaluator=%s",
         (id_penilaian, user_id),
         one=True
     )
@@ -77,14 +77,14 @@ def assess(id_penilaian):
 
     # Ambil info karyawan yang dinilai
     karyawan = query_db(
-        "SELECT * FROM employees WHERE user_id=?",
+        "SELECT * FROM employees WHERE user_id=%s",
         (penilaian['id_karyawan'],),
         one=True
     )
 
     # Ambil periode
     periode = query_db(
-        "SELECT * FROM assessment_periods WHERE id_period=?",
+        "SELECT * FROM assessment_periods WHERE id_period=%s",
         (penilaian['id_period'],),
         one=True
     )
@@ -106,7 +106,7 @@ def assess(id_penilaian):
     existing_scores = {}
     existing_feedbacks = {}
     details = query_db(
-        "SELECT dp.*, i.core_value FROM detail_penilaians dp JOIN indikators i ON dp.id_indikator = i.id_indikator WHERE dp.penilaian_id=?",
+        "SELECT dp.*, i.core_value FROM detail_penilaians dp JOIN indikators i ON dp.id_indikator = i.id_indikator WHERE dp.penilaian_id=%s",
         (id_penilaian,)
     )
     for d in details:
@@ -141,19 +141,19 @@ def assess(id_penilaian):
                 )
 
         # Simpan detail
-        execute_db("DELETE FROM detail_penilaians WHERE penilaian_id=?", (id_penilaian,))
+        execute_db("DELETE FROM detail_penilaians WHERE penilaian_id=%s", (id_penilaian,))
         for id_ind, score_val in scores.items():
             ind_obj = next((i for i in indikators if i['id_indikator'] == id_ind), None)
             cv = ind_obj['core_value'] if ind_obj else None
             fb = feedbacks.get(cv, '')
             execute_db(
-                "INSERT INTO detail_penilaians (penilaian_id, id_indikator, score, feedback) VALUES (?,?,?,?)",
+                "INSERT INTO detail_penilaians (penilaian_id, id_indikator, score, feedback) VALUES (%s,%s,%s,%s)",
                 (id_penilaian, id_ind, score_val, fb)
             )
 
         if action == 'submit':
             execute_db(
-                "UPDATE penilaians SET status='submitted', submitted_at=? WHERE id_penilaian=?",
+                "UPDATE penilaians SET status='submitted', submitted_at=%s WHERE id_penilaian=%s",
                 (datetime.now().isoformat(), id_penilaian)
             )
             # Cek apakah semua evaluator sudah submit → hitung otomatis

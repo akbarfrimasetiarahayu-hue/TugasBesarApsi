@@ -78,7 +78,7 @@ def login():
                FROM user_accounts ua
                JOIN employees e ON ua.id_employee = e.user_id
                JOIN roles r ON ua.id_role = r.id_role
-               WHERE ua.username = ? AND ua.status = 'active'""",
+               WHERE ua.username = %s AND ua.status = 'active'""",
             (username,),
             one=True
         )

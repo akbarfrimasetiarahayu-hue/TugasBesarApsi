@@ -38,11 +38,11 @@ def dashboard():
 
     if periode_aktif:
         total_pending = query_db(
-            "SELECT COUNT(*) as cnt FROM penilaians WHERE id_period=? AND status='pending'",
+            "SELECT COUNT(*) as cnt FROM penilaians WHERE id_period=%s AND status='pending'",
             (periode_aktif['id_period'],), one=True
         )['cnt']
         total_selesai = query_db(
-            "SELECT COUNT(*) as cnt FROM penilaians WHERE id_period=? AND status='submitted'",
+            "SELECT COUNT(*) as cnt FROM penilaians WHERE id_period=%s AND status='submitted'",
             (periode_aktif['id_period'],), one=True
         )['cnt']
 
@@ -53,7 +53,7 @@ def dashboard():
                       SUM(CASE WHEN p.status='submitted' THEN 1 ELSE 0 END) as selesai
                FROM penilaians p
                JOIN employees e ON p.id_evaluator = e.user_id
-               WHERE p.id_period = ?
+               WHERE p.id_period = %s
                GROUP BY e.division""",
             (periode_aktif['id_period'],)
         )
@@ -63,7 +63,7 @@ def dashboard():
             """SELECT DISTINCT e.nama, e.email, e.division, p.jenis_penilaian
                FROM penilaians p
                JOIN employees e ON p.id_evaluator = e.user_id
-               WHERE p.id_period = ? AND p.status = 'pending'
+               WHERE p.id_period = %s AND p.status = 'pending'
                LIMIT 10""",
             (periode_aktif['id_period'],)
         )
@@ -102,7 +102,7 @@ def employees():
             """SELECT e.*, sup.nama as nama_supervisor
                FROM employees e
                LEFT JOIN employees sup ON e.id_supervisor = sup.user_id
-               WHERE e.nama LIKE ? OR e.nip LIKE ? OR e.division LIKE ?
+               WHERE e.nama LIKE %s OR e.nip LIKE %s OR e.division LIKE %s
                ORDER BY e.nama""",
             (f'%{search}%', f'%{search}%', f'%{search}%')
         )
@@ -139,17 +139,17 @@ def employee_add():
         return redirect(url_for('hr.employees'))
 
     # Cek duplikat NIP
-    if query_db("SELECT user_id FROM employees WHERE nip=?", (nip,), one=True):
+    if query_db("SELECT user_id FROM employees WHERE nip=%s", (nip,), one=True):
         flash('NIP sudah terdaftar.', 'danger')
         return redirect(url_for('hr.employees'))
 
     # Cek duplikat email
-    if query_db("SELECT user_id FROM employees WHERE email=?", (email,), one=True):
+    if query_db("SELECT user_id FROM employees WHERE email=%s", (email,), one=True):
         flash('Email sudah terdaftar.', 'danger')
         return redirect(url_for('hr.employees'))
 
     execute_db(
-        "INSERT INTO employees (nama, email, nip, position, division, id_supervisor) VALUES (?, ?, ?, ?, ?, ?)",
+        "INSERT INTO employees (nama, email, nip, position, division, id_supervisor) VALUES (%s, %s, %s, %s, %s, %s)",
         (nama, email, nip, position, division, id_sup)
     )
     flash(f'Karyawan {nama} berhasil ditambahkan.', 'success')
@@ -173,19 +173,19 @@ def employee_edit(user_id):
         return redirect(url_for('hr.employees'))
 
     # Cek duplikat NIP (exclude diri sendiri)
-    dup_nip = query_db("SELECT user_id FROM employees WHERE nip=? AND user_id!=?", (nip, user_id), one=True)
+    dup_nip = query_db("SELECT user_id FROM employees WHERE nip=%s AND user_id!=%s", (nip, user_id), one=True)
     if dup_nip:
         flash('NIP sudah digunakan karyawan lain.', 'danger')
         return redirect(url_for('hr.employees'))
 
     # Cek duplikat email
-    dup_email = query_db("SELECT user_id FROM employees WHERE email=? AND user_id!=?", (email, user_id), one=True)
+    dup_email = query_db("SELECT user_id FROM employees WHERE email=%s AND user_id!=%s", (email, user_id), one=True)
     if dup_email:
         flash('Email sudah digunakan karyawan lain.', 'danger')
         return redirect(url_for('hr.employees'))
 
     execute_db(
-        "UPDATE employees SET nama=?, email=?, nip=?, position=?, division=?, id_supervisor=? WHERE user_id=?",
+        "UPDATE employees SET nama=%s, email=%s, nip=%s, position=%s, division=%s, id_supervisor=%s WHERE user_id=%s",
         (nama, email, nip, position, division, id_sup, user_id)
     )
     flash(f'Data karyawan berhasil diperbarui.', 'success')
@@ -197,13 +197,13 @@ def employee_edit(user_id):
 @role_required('hr')
 def employee_delete(user_id):
     """Hapus karyawan."""
-    karyawan = query_db("SELECT nama FROM employees WHERE user_id=?", (user_id,), one=True)
+    karyawan = query_db("SELECT nama FROM employees WHERE user_id=%s", (user_id,), one=True)
     if not karyawan:
         flash('Karyawan tidak ditemukan.', 'danger')
         return redirect(url_for('hr.employees'))
 
-    execute_db("DELETE FROM user_accounts WHERE id_employee=?", (user_id,))
-    execute_db("DELETE FROM employees WHERE user_id=?", (user_id,))
+    execute_db("DELETE FROM user_accounts WHERE id_employee=%s", (user_id,))
+    execute_db("DELETE FROM employees WHERE user_id=%s", (user_id,))
     flash(f'Karyawan {karyawan["nama"]} berhasil dihapus.', 'success')
     return redirect(url_for('hr.employees'))
 
@@ -238,7 +238,7 @@ def period_add():
         return redirect(url_for('hr.periods'))
 
     execute_db(
-        "INSERT INTO assessment_periods (period_name, start_date, end_date, status) VALUES (?, ?, ?, 'draft')",
+        "INSERT INTO assessment_periods (period_name, start_date, end_date, status) VALUES (%s, %s, %s, 'draft')",
         (period_name, start_date, end_date)
     )
     flash(f'Periode "{period_name}" berhasil ditambahkan.', 'success')
@@ -260,7 +260,7 @@ def period_edit(id_period):
         return redirect(url_for('hr.periods'))
 
     execute_db(
-        "UPDATE assessment_periods SET period_name=?, start_date=?, end_date=?, status=? WHERE id_period=?",
+        "UPDATE assessment_periods SET period_name=%s, start_date=%s, end_date=%s, status=%s WHERE id_period=%s",
         (period_name, start_date, end_date, status, id_period)
     )
     flash('Periode berhasil diperbarui.', 'success')
@@ -272,7 +272,7 @@ def period_edit(id_period):
 @role_required('hr')
 def period_delete(id_period):
     """Hapus periode penilaian."""
-    execute_db("DELETE FROM assessment_periods WHERE id_period=?", (id_period,))
+    execute_db("DELETE FROM assessment_periods WHERE id_period=%s", (id_period,))
     flash('Periode berhasil dihapus.', 'success')
     return redirect(url_for('hr.periods'))
 
@@ -299,7 +299,7 @@ def assign():
         )
 
         # Hapus assignment lama untuk periode ini
-        execute_db("DELETE FROM penilaians WHERE id_period=?", (id_period,))
+        execute_db("DELETE FROM penilaians WHERE id_period=%s", (id_period,))
 
         count = 0
         for emp in employees_list:
@@ -309,7 +309,7 @@ def assign():
 
             # SELF assessment
             execute_db(
-                "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (?,?,?,'self','pending')",
+                "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (%s,%s,%s,'self','pending')",
                 (id_period, emp_id, emp_id)
             )
             count += 1
@@ -317,19 +317,19 @@ def assign():
             # ATASAN — jika punya supervisor
             if emp_sup:
                 execute_db(
-                    "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (?,?,?,'atasan','pending')",
+                    "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (%s,%s,%s,'atasan','pending')",
                     (id_period, emp_sup, emp_id)
                 )
                 count += 1
 
             # BAWAHAN — semua karyawan yang menggunakan emp sebagai supervisor
             bawahans = query_db(
-                "SELECT user_id FROM employees WHERE id_supervisor=? AND user_id!=?",
+                "SELECT user_id FROM employees WHERE id_supervisor=%s AND user_id!=%s",
                 (emp_id, emp_id)
             )
             for b in bawahans:
                 execute_db(
-                    "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (?,?,?,'bawahan','pending')",
+                    "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (%s,%s,%s,'bawahan','pending')",
                     (id_period, b['user_id'], emp_id)
                 )
                 count += 1
@@ -338,14 +338,14 @@ def assign():
             bawahan_ids = [b['user_id'] for b in bawahans]
             exclude_ids = bawahan_ids + ([emp_sup] if emp_sup else []) + [emp_id]
             rekans = query_db(
-                "SELECT user_id FROM employees WHERE division=? AND user_id NOT IN ({})".format(
-                    ','.join('?' * len(exclude_ids))
+                "SELECT user_id FROM employees WHERE division=%s AND user_id NOT IN ({})".format(
+                    ','.join('%s' * len(exclude_ids))
                 ),
                 [emp_div] + exclude_ids
             )
             for r in rekans:
                 execute_db(
-                    "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (?,?,?,'rekan','pending')",
+                    "INSERT INTO penilaians (id_period, id_evaluator, id_karyawan, jenis_penilaian, status) VALUES (%s,%s,%s,'rekan','pending')",
                     (id_period, r['user_id'], emp_id)
                 )
                 count += 1
@@ -364,7 +364,7 @@ def assign():
                FROM penilaians p
                JOIN employees ev ON p.id_evaluator = ev.user_id
                JOIN employees ka ON p.id_karyawan = ka.user_id
-               WHERE p.id_period = ?
+               WHERE p.id_period = %s
                ORDER BY ka.nama, p.jenis_penilaian""",
             (selected_period,)
         )
@@ -390,7 +390,7 @@ def send_reminder():
         return redirect(url_for('hr.dashboard'))
 
     pending_count = query_db(
-        "SELECT COUNT(*) as cnt FROM penilaians WHERE id_period=? AND status='pending'",
+        "SELECT COUNT(*) as cnt FROM penilaians WHERE id_period=%s AND status='pending'",
         (id_period,), one=True
     )['cnt']
 
@@ -418,10 +418,10 @@ def results():
                WHERE 1=1"""
     params = []
     if id_period:
-        query += " AND h.id_period = ?"
+        query += " AND h.id_period = %s"
         params.append(id_period)
     if division:
-        query += " AND e.division = ?"
+        query += " AND e.division = %s"
         params.append(division)
     query += " ORDER BY h.total_score DESC"
 
@@ -486,7 +486,7 @@ def generate_report():
     from app.services.report_gen import generate_excel, generate_pdf
     from flask import send_file
 
-    periode = query_db("SELECT * FROM assessment_periods WHERE id_period=?", (id_period,), one=True)
+    periode = query_db("SELECT * FROM assessment_periods WHERE id_period=%s", (id_period,), one=True)
     if not periode:
         flash('Periode tidak ditemukan.', 'danger')
         return redirect(url_for('hr.reports'))

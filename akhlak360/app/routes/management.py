@@ -35,28 +35,28 @@ def dashboard():
         pid = periode_aktif['id_period']
         distribusi_kategori = query_db(
             """SELECT category, COUNT(*) as jumlah FROM hasil_akhirs
-               WHERE id_period=? AND category IS NOT NULL
+               WHERE id_period=%s AND category IS NOT NULL
                GROUP BY category""",
             (pid,)
         )
         top_performers = query_db(
             """SELECT h.total_score, h.category, e.nama, e.division, e.position
                FROM hasil_akhirs h JOIN employees e ON h.id_employee=e.user_id
-               WHERE h.id_period=? AND h.total_score IS NOT NULL
+               WHERE h.id_period=%s AND h.total_score IS NOT NULL
                ORDER BY h.total_score DESC LIMIT 5""",
             (pid,)
         )
         bottom_performers = query_db(
             """SELECT h.total_score, h.category, e.nama, e.division, e.position
                FROM hasil_akhirs h JOIN employees e ON h.id_employee=e.user_id
-               WHERE h.id_period=? AND h.total_score IS NOT NULL
+               WHERE h.id_period=%s AND h.total_score IS NOT NULL
                ORDER BY h.total_score ASC LIMIT 5""",
             (pid,)
         )
         division_stats = query_db(
             """SELECT e.division, AVG(h.total_score) as avg_score, COUNT(h.id_result) as jumlah
                FROM hasil_akhirs h JOIN employees e ON h.id_employee=e.user_id
-               WHERE h.id_period=?
+               WHERE h.id_period=%s
                GROUP BY e.division ORDER BY avg_score DESC""",
             (pid,)
         )
@@ -86,10 +86,10 @@ def performance():
                WHERE 1=1"""
     params = []
     if id_period:
-        query += " AND h.id_period=?"
+        query += " AND h.id_period=%s"
         params.append(id_period)
     if division:
-        query += " AND e.division=?"
+        query += " AND e.division=%s"
         params.append(division)
     query += " ORDER BY h.total_score DESC"
 
@@ -128,7 +128,7 @@ def generate_report():
         return redirect(url_for('management.reports'))
 
     from app.services.report_gen import generate_excel, generate_pdf
-    periode = query_db("SELECT * FROM assessment_periods WHERE id_period=?", (id_period,), one=True)
+    periode = query_db("SELECT * FROM assessment_periods WHERE id_period=%s", (id_period,), one=True)
 
     employee_id = session.get('user_id')
     if report_type == 'pdf':

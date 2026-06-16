@@ -35,7 +35,7 @@ def dashboard():
     if periode_aktif:
         # Status self-assessment karyawan ini
         self_assessment = query_db(
-            "SELECT * FROM penilaians WHERE id_period=? AND id_evaluator=? AND jenis_penilaian='self'",
+            "SELECT * FROM penilaians WHERE id_period=%s AND id_evaluator=%s AND jenis_penilaian='self'",
             (periode_aktif['id_period'], user_id),
             one=True
         )
@@ -47,7 +47,7 @@ def dashboard():
         """SELECT h.*, ap.period_name
            FROM hasil_akhirs h
            JOIN assessment_periods ap ON h.id_period = ap.id_period
-           WHERE h.id_employee = ?
+           WHERE h.id_employee = %s
            ORDER BY h.calculated_at DESC LIMIT 3""",
         (user_id,)
     )
@@ -81,7 +81,7 @@ def self_assessment():
 
     # Cari penilaian self
     penilaian = query_db(
-        "SELECT * FROM penilaians WHERE id_period=? AND id_evaluator=? AND jenis_penilaian='self'",
+        "SELECT * FROM penilaians WHERE id_period=%s AND id_evaluator=%s AND jenis_penilaian='self'",
         (periode['id_period'], user_id),
         one=True
     )
@@ -115,7 +115,7 @@ def self_assessment():
     # Ambil draft yang sudah diisi (jika ada)
     existing_scores = {}
     details = query_db(
-        "SELECT * FROM detail_penilaians WHERE penilaian_id=?",
+        "SELECT * FROM detail_penilaians WHERE penilaian_id=%s",
         (penilaian['id_penilaian'],)
     )
     for d in details:
@@ -146,19 +146,19 @@ def self_assessment():
                 )
 
         # Simpan/update detail penilaian
-        execute_db("DELETE FROM detail_penilaians WHERE penilaian_id=?", (penilaian['id_penilaian'],))
+        execute_db("DELETE FROM detail_penilaians WHERE penilaian_id=%s", (penilaian['id_penilaian'],))
         for id_ind, score_val in scores.items():
             ind_obj = next((i for i in indikators if i['id_indikator'] == id_ind), None)
             cv = ind_obj['core_value'] if ind_obj else None
             fb = feedbacks.get(cv, '') if cv else ''
             execute_db(
-                "INSERT INTO detail_penilaians (penilaian_id, id_indikator, score, feedback) VALUES (?,?,?,?)",
+                "INSERT INTO detail_penilaians (penilaian_id, id_indikator, score, feedback) VALUES (%s,%s,%s,%s)",
                 (penilaian['id_penilaian'], id_ind, score_val, fb)
             )
 
         if action == 'submit':
             execute_db(
-                "UPDATE penilaians SET status='submitted', submitted_at=? WHERE id_penilaian=?",
+                "UPDATE penilaians SET status='submitted', submitted_at=%s WHERE id_penilaian=%s",
                 (datetime.now().isoformat(), penilaian['id_penilaian'])
             )
             flash('Self-assessment berhasil disubmit!', 'success')
@@ -189,7 +189,7 @@ def my_results():
     periods_list = query_db(
         """SELECT DISTINCT ap.* FROM assessment_periods ap
            JOIN hasil_akhirs h ON ap.id_period = h.id_period
-           WHERE h.id_employee = ?
+           WHERE h.id_employee = %s
            ORDER BY ap.start_date DESC""",
         (user_id,)
     )
@@ -203,7 +203,7 @@ def my_results():
         hasil = query_db(
             """SELECT h.*, ap.period_name FROM hasil_akhirs h
                JOIN assessment_periods ap ON h.id_period = ap.id_period
-               WHERE h.id_employee=? AND h.id_period=?""",
+               WHERE h.id_employee=%s AND h.id_period=%s""",
             (user_id, id_period),
             one=True
         )
@@ -221,8 +221,8 @@ def my_results():
                            FROM detail_penilaians dp
                            JOIN penilaians p ON dp.penilaian_id = p.id_penilaian
                            JOIN indikators i ON dp.id_indikator = i.id_indikator
-                           WHERE p.id_karyawan=? AND p.id_period=? AND p.jenis_penilaian=?
-                             AND p.status='submitted' AND i.core_value=?""",
+                           WHERE p.id_karyawan=%s AND p.id_period=%s AND p.jenis_penilaian=%s
+                             AND p.status='submitted' AND i.core_value=%s""",
                         (user_id, id_period, jenis, cv),
                         one=True
                     )
